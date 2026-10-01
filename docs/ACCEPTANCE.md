@@ -46,9 +46,15 @@
 
 ## 云服务
 
-只做无认证、无内容写入探测。新账号来源为 `403 ORIGIN_NOT_ALLOWED`，旧来源得到 `400 INVALID_AUTHORIZATION`。工作区和 flomo 的无凭据请求为 `401 MISSING_CREDENTIALS`。
+初始无认证探测中，新账号来源为 `403 ORIGIN_NOT_ALLOWED`，旧来源得到 `400 INVALID_AUTHORIZATION`。
 
-真实账号登录、注册、验证码、工作区双设备同步、flomo 同步、账号隔离的服务端验证尚未执行。需要先追加新来源，再使用服务允许的账号操作；本轮不创建测试账号、不发送验证码、不修改原云内容。
+用户于 2026-09-30 授权追加新来源。执行后回读确认：只改变 `tab-out-sync` 的 `TAB_OUT_EXTENSION_ORIGIN`，原 3 条来源、其余环境变量及代码/运行配置全部保留；函数 Active。
+
+2026-10-01 06:44 UTC 更新后实测：新来源及原有 3 条来源的账号登录预检均为 `204`，返回各自精确允许来源；未授权对照来源仍为 `403 ORIGIN_NOT_ALLOWED`。新 ID 的账号资料无 Token 请求为 `400 INVALID_AUTHORIZATION`，登录/验证码接口空请求为 `400 INVALID_REQUEST`。工作区和 flomo 无凭据请求仍为网关 `401 MISSING_CREDENTIALS`。
+
+此次使用已授权管理连接只读核对目标账号的登录标识，不把个人账号资料写入公开文档。真实账号登录、注册、验证码、工作区双设备同步、flomo 同步及账号隔离的服务端验证仍未执行；没有绑定/解绑账号、修改密码、发送验证码或写入原云内容。
+
+本地证据为被忽略的 `dist/cloud-origin-change.json`、`dist/cloud-origin-preflight.json` 和 `dist/cloud-probe.json`。安装包仅因安装说明更新而重建；运行文件保持原样。
 
 ## 发布
 

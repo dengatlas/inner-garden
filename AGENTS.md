@@ -12,7 +12,7 @@
 - docs/DECISIONS.md and docs/decisions/public-edition.json record the user's accepted 1B/2A/3A/4A/5A choices and subsequent public-repository authorization: existing CloudBase for service-eligible accounts, new fixed ID, local fonts/icons, reviewed prompt content and independent Git.
 - docs/ACCEPTANCE.md records current evidence and open acceptance. Do not conflate automated checks, browser acceptance, cloud-account acceptance and publication.
 - MIGRATION_HANDOFF.md, PUBLIC_RELEASE_PLAN.md and COPY_BASELINE.json are historical ignored handoff material, not current product policy. Never overwrite the baseline to conceal intentional development differences.
-- The new ID is ohdenlpjdfngpaaggijhcagfpafecgdn. Keep it stable. Existing service rejects the new account origin until authorized; do not claim all accounts are usable from configuration alone.
+- The new ID is ohdenlpjdfngpaaggijhcagfpafecgdn. Keep it stable. The user authorized appending this account origin on 2026-09-30; the change and preflight were verified. Real account login/sync remain pending; do not claim all accounts are usable from origin authorization alone.
 
 ## Implementation boundaries
 

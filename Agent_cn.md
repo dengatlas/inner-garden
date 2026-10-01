@@ -12,7 +12,7 @@
 - docs/DECISIONS.md 和 docs/decisions/public-edition.json 记录已确认的 1B/2A/3A/4A/5A 及后续公开仓库授权：现有 CloudBase 面向服务允许的账号、新固定 ID、本地字体图标、审查 prompt 与独立 Git。
 - docs/ACCEPTANCE.md 记录当前验证和待验收事项；自动检查、浏览器验收、云账号验收、发布分开报告。
 - MIGRATION_HANDOFF.md、PUBLIC_RELEASE_PLAN.md、COPY_BASELINE.json 是被忽略的历史交接材料，不代表当前产品策略；不重写基线掩盖有意变化。
-- 新 ID 是 ohdenlpjdfngpaaggijhcagfpafecgdn，保持稳定。账号服务目前拒绝新来源；不能仅凭配置宣称全部账号已可用。
+- 新 ID 是 ohdenlpjdfngpaaggijhcagfpafecgdn，保持稳定。用户于 2026-09-30 授权追加账号来源，配置及预检已验证。真实账号登录/同步仍待验收；不能仅凭来源授权宣称全部账号已可用。
 
 ## 实现边界
 

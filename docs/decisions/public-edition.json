@@ -9,5 +9,7 @@
   "faviconPolicy": "local-domain-monograms",
   "promptPolicy": "only-verifiably-redistributable",
   "publication": "public-source-repository",
-  "repositoryUrl": "https://github.com/dengatlas/inner-garden"
+  "repositoryUrl": "https://github.com/dengatlas/inner-garden",
+  "accountOriginStatus": "authorized-and-preflight-verified",
+  "cloudAccountAcceptance": "pending"
 }

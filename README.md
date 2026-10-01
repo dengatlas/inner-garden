@@ -2,7 +2,7 @@
 
 本地优先的桌面 Chrome 新标签页工作区：整理标签、管理稍后再看、专注计时、安排日历与周计划、记录日课和 flomo 笔记。
 
-当前版本 **1.2.0**，源码公开于 [dengatlas/inner-garden](https://github.com/dengatlas/inner-garden)，尚未发布 GitHub Release 或提交扩展商店。保留原 CloudBase 服务；新扩展 ID 尚需账号服务来源授权，云登录和真实账号同步未通过验收。本机编辑无需登录。
+当前版本 **1.2.0**，源码公开于 [dengatlas/inner-garden](https://github.com/dengatlas/inner-garden)，尚未发布 GitHub Release 或提交扩展商店。保留原 CloudBase 服务；新扩展 ID 的账号来源已获授权并通过预检，真实账号登录和同步仍待验收。本机编辑无需登录。
 
 ## 安装
 
