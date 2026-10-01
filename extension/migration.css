@@ -1,0 +1,13 @@
+:root { color-scheme: light; font-family: "Microsoft YaHei", system-ui, sans-serif; color: #39342f; background: #f4efe7; }
+body { margin: 0; }
+main { width: min(680px, calc(100% - 32px)); margin: 48px auto; }
+.kicker { color: #7d746c; font-size: 12px; letter-spacing: .12em; }
+h1 { margin: 4px 0 14px; font-family: Georgia, "Songti SC", serif; font-size: 36px; }
+p { line-height: 1.75; }
+section { margin-top: 18px; padding: 20px; border: 1px solid #d8cfc3; border-radius: 12px; background: rgba(255,255,255,.72); }
+h2 { margin: 0; font-size: 18px; }
+button, .file-button { display: inline-flex; margin-top: 8px; padding: 10px 16px; border: 1px solid #849880; border-radius: 8px; color: #fff; background: #60775e; font: inherit; font-weight: 700; cursor: pointer; }
+button:hover, .file-button:hover { background: #50684f; }
+input[type=file] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+#status { min-height: 28px; padding: 8px 2px; font-weight: 700; }
+#status[data-kind=error] { color: #a34545; }

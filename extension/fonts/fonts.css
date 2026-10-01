@@ -1,0 +1,22 @@
+/* Original font binaries; SIL Open Font License 1.1 notices ship alongside. */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url('DM-Sans.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Newsreader';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('Newsreader.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Newsreader';
+  font-style: italic;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('Newsreader-Italic.ttf') format('truetype');
+}

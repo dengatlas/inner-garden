@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inner Garden · 设备迁移</title>
+  <link rel="stylesheet" href="migration.css">
+</head>
+<body>
+  <main>
+    <p class="kicker">INNER GARDEN · 美日心灵</p>
+    <h1>设备迁移</h1>
+    <p>本版使用独立插件 ID，可与旧版并存。在旧插件中导出迁移包，再在尚未保存内容的新版中导入。保留旧版，导入后需要重新登录原账号。</p>
+    <section>
+      <h2>1. 旧插件：导出</h2>
+      <p>保留工作区、各账号的同步队列与冲突、历史备份、稍后再看、专注状态和本机设置。</p>
+      <button id="exportMigration" type="button">导出设备迁移包</button>
+    </section>
+    <section>
+      <h2>2. 新插件：导入</h2>
+      <p>只允许导入到尚未保存内容或登录账号的空白安装；自动初始化的空工作区不影响导入。先关闭其他新版标签页，避免迁移过程中编辑。</p>
+      <label class="file-button" for="migrationFile">选择迁移包</label>
+      <input id="migrationFile" type="file" accept="application/json,.json">
+    </section>
+    <p id="status" role="status" aria-live="polite"></p>
+  </main>
+  <script src="shared/device-migration.js"></script>
+  <script src="migration.js"></script>
+</body>
+</html>

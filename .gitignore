@@ -1,0 +1,40 @@
+# Personal configuration, credentials and device data
+extension/config.local.js
+**/config.local.js
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+private/
+backups/
+exports/
+profiles/
+*.db
+*.sqlite
+
+# Internal provenance and transition documents
+COPY_BASELINE.json
+MIGRATION_HANDOFF.md
+PUBLIC_RELEASE_PLAN.md
+
+# Generated distribution and local tools
+dist/
+node_modules/
+coverage/
+tmp/
+*.log
+*.zip
+*.crx
+.DS_Store
+Thumbs.db
+
+# Do not import the original private project
+Inbox/
+output/
+
+# Browser automation profiles, snapshots and local acceptance logs
+.playwright/
+.playwright-cli/

@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inner Garden · 美日心灵</title>
+
+  <!-- Google Fonts: Newsreader (for headings/numbers) + DM Sans (for body text) -->
+  <link href="fonts/fonts.css" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="flomo.css">
+</head>
+<body>
+<div class="container">
+
+
+
+  <!-- ================================================================
+       HEADER — greeting on the left
+       ================================================================ -->
+  <header>
+    <div class="header-left">
+      <!-- "Good afternoon" — written by getGreeting() in app.js -->
+      <h1 id="greeting"></h1>
+      <!-- "Friday, April 4, 2026" — written by getDateDisplay() in app.js -->
+      <div class="date" id="dateDisplay"></div>
+    </div>
+  </header>
+
+  <!-- ================================================================
+       INNER GARDEN · 美日心灵 DUPES BANNER — appears when you have extra Inner Garden · 美日心灵 tabs open
+       Hidden by default; app.js shows it when dupeTabOutCount > 1
+       ================================================================ -->
+  <div class="tab-cleanup-banner" id="tabOutDupeBanner" style="display:none">
+    <div class="tab-cleanup-left">
+      <div class="tab-cleanup-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+        </svg>
+      </div>
+      <div class="tab-cleanup-text">
+        You have <strong id="tabOutDupeCount"></strong> Inner Garden · 美日心灵 tabs open. Keep just this one?
+      </div>
+    </div>
+    <button class="tab-cleanup-btn" data-action="close-tabout-dupes">Close extras</button>
+  </div>
+
+  <!-- ================================================================
+       MAIN CONTENT AREA — two-column layout
+       Left: open tabs (domain/mission cards)
+       Right: saved for later checklist
+       The right column only renders when it has items (JS controls this)
+       ================================================================ -->
+  <!-- Focus timer -->
+  <section class="focus-timer" id="focusTimer">
+    <div class="focus-clock">
+      <div class="focus-kicker">Shanghai</div>
+      <div class="shanghai-time" id="shanghaiTimeDisplay">--:--</div>
+      <div class="shanghai-date" id="shanghaiDateDisplay">--/-- ---</div>
+    </div>
+
+    <div class="focus-countdown-dial" aria-hidden="true">
+      <div class="focus-dial-ring" id="focusDialRing"></div>
+      <div class="focus-dial-hand" id="focusDialHand"></div>
+      <div class="focus-dial-pin"></div>
+    </div>
+
+    <div class="focus-timer-copy">
+      <div class="focus-title" id="focusTimerLabel">Focus session</div>
+      <div class="focus-progress-track" aria-hidden="true">
+        <div class="focus-progress-fill" id="focusProgressFill"></div>
+      </div>
+    </div>
+
+    <div class="focus-timer-face" aria-live="polite">
+      <div class="focus-time" id="focusTimerDisplay">25:00</div>
+      <div class="focus-status" id="focusTimerStatus">Ready</div>
+    </div>
+
+    <div class="focus-timer-controls">
+      <div class="focus-mode-toggle" role="group" aria-label="Timer mode">
+        <button class="focus-mode active" data-action="set-focus-mode" data-focus-mode="focus">Focus</button>
+        <button class="focus-mode" data-action="set-focus-mode" data-focus-mode="break">Break</button>
+      </div>
+      <div class="focus-actions">
+        <button class="focus-btn primary" id="focusStartPause" data-action="toggle-focus-timer">Start</button>
+        <button class="focus-btn" data-action="reset-focus-timer">Reset</button>
+      </div>
+    </div>
+
+    <div class="focus-custom" aria-label="Custom countdown">
+      <label class="focus-custom-label" for="focusCustomMinutes">Custom</label>
+      <div class="focus-custom-row">
+        <input class="focus-custom-input" id="focusCustomMinutes" type="number" min="1" max="180" step="1" value="15" inputmode="numeric">
+        <span class="focus-custom-unit">min</span>
+        <button class="focus-btn focus-custom-set" data-action="set-custom-focus-duration">Set</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main dashboard columns -->
+  <div class="dashboard-columns" id="dashboardColumns">
+
+    <!-- LEFT COLUMN: Open tabs -->
+    <div class="active-section" id="openTabsSection" style="display:none">
+      <div class="section-header">
+        <h2 id="openTabsSectionTitle">Right now</h2>
+        <div class="section-line"></div>
+        <div class="section-count" id="openTabsSectionCount"></div>
+      </div>
+      <div class="missions" id="openTabsMissions"></div>
+    </div>
+
+    <!-- RIGHT COLUMN: Saved for Later checklist -->
+    <div class="deferred-column" id="deferredColumn" style="display:none">
+      <div class="section-header">
+        <h2>Saved for later</h2>
+        <div class="section-line"></div>
+        <div class="section-count" id="deferredCount"></div>
+      </div>
+
+      <!-- Active checklist items — injected by renderDeferredList() in app.js -->
+      <div class="deferred-list" id="deferredList"></div>
+
+      <!-- Empty state — shown when no active deferred tabs -->
+      <div class="deferred-empty" id="deferredEmpty" style="display:none">
+        Nothing saved. Living in the moment.
+      </div>
+
+      <!-- Archive section — collapsed by default -->
+      <div class="deferred-archive" id="deferredArchive" style="display:none">
+        <button class="archive-toggle" id="archiveToggle">
+          <svg class="archive-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
+          Archive
+          <span class="archive-count" id="archiveCount"></span>
+        </button>
+        <div class="archive-body" id="archiveBody" style="display:none">
+          <input type="text" class="archive-search" id="archiveSearch" placeholder="Search archived tabs...">
+          <div class="archive-list" id="archiveList"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end .dashboard-columns -->
+
+  <section class="weekly-workspace" id="weeklyWorkspace">
+    <div class="sync-toolbar" id="workspaceSyncToolbar" aria-live="polite">
+      <button class="sync-identity" type="button" data-action="open-sync-panel" aria-label="打开账号与同步设置">
+        <span class="sync-status-dot" id="syncStatusDot"></span>
+        <span>
+          <strong id="syncStatusLabel">仅保存在本机</strong>
+          <small id="syncStatusDetail">你的计划数据安全地保存在这台电脑上</small>
+          <small class="sync-scope-label">日历与日课同步</small>
+        </span>
+      </button>
+      <div class="sync-toolbar-actions">
+        <span class="sync-queue-count" id="syncQueueCount"></span>
+        <button class="sync-button" type="button" data-action="sync-workspace-now">同步日历与日课</button>
+        <span class="sync-action-indicator" id="syncActionIndicator" data-status="idle" role="status" aria-label="尚未开始同步" title="尚未开始同步">&bull;</span>
+        <button class="sync-button subtle" type="button" data-action="open-sync-panel">账号</button>
+      </div>
+    </div>
+    <div id="workspaceTabAnchor" aria-hidden="true"></div>
+    <div class="workspace-tab-bar" id="workspaceTabBar">
+      <div class="workspace-tab-list" role="tablist" aria-label="工作区模块">
+        <button id="workspaceTabCalendar" class="workspace-tab" type="button" role="tab" aria-controls="calendarPanel" aria-selected="true" tabindex="0" data-workspace-tab="calendar">日历</button>
+        <button id="workspaceTabDaily" class="workspace-tab" type="button" role="tab" aria-controls="dailyPanel" aria-selected="false" tabindex="-1" data-workspace-tab="daily">日课</button>
+        <button id="workspaceTabFlomo" class="workspace-tab" type="button" role="tab" aria-controls="flomoSection" aria-selected="false" tabindex="-1" data-workspace-tab="flomo">flomo</button>
+      </div>
+      <div class="workspace-week-controls">
+        <div class="section-count" id="weekRangeLabel"></div>
+        <div class="week-nav" aria-label="周切换">
+          <button type="button" data-action="show-prev-week" aria-label="上一周">上周</button>
+          <button type="button" data-action="show-current-week">本周</button>
+          <button type="button" data-action="show-next-week" aria-label="下一周">下周</button>
+        </div>
+      </div>
+    </div>
+    <div class="weekly-planner workspace-tab-panel" id="calendarPanel" role="tabpanel" aria-labelledby="workspaceTabCalendar">
+      <div class="week-calendar" id="weekCalendar"></div>
+    </div>
+
+    <div class="weekly-lower workspace-tab-panel" id="dailyPanel" role="tabpanel" aria-labelledby="workspaceTabDaily" hidden>
+      <div class="daily-log-archive" id="dailyLogArchive" aria-label="Generated daily logs"></div>
+      <div class="year-archive" id="yearArchive" aria-label="Year archive"></div>
+
+      <aside class="daily-log-panel">
+        <div class="daily-log-editor-head">
+          <div class="section-header">
+            <h2>Daily log</h2>
+            <div class="section-line"></div>
+            <div class="section-count" id="dailyLogDateLabel"></div>
+          </div>
+
+          <div class="week-plan">
+            <div class="log-block-header">
+              <span>周计划</span>
+              <div class="log-block-actions">
+                <form class="week-plan-quick-add" id="weekPlanQuickForm">
+                  <input id="weekPlanQuickInput" type="text" aria-label="Add 周计划 item" placeholder="添加周计划..." autocomplete="off">
+                  <button class="week-plan-add-btn" type="submit" title="Add item" aria-label="Add 周计划 item">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
+                    </svg>
+                  </button>
+                </form>
+                <button class="log-expand-btn" type="button" data-action="open-week-plan-editor" title="Expand editor" aria-label="Expand 周计划">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="week-plan-preview" id="weekPlanList" aria-label="周计划 preview"></div>
+          </div>
+        </div>
+
+        <div class="daily-log-editor-body">
+          <div class="log-quadrants" id="logQuadrants">
+            <div class="log-block">
+              <div class="log-block-header">
+                <span>灵感-审视</span>
+                <div class="log-block-actions">
+                  <button class="log-clear-btn" type="button" data-action="clear-daily-log-field" data-log-editor-key="inspiration" title="Clear text" aria-label="Clear 灵感-审视">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 7h12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-7 4v6m4-6v6m4-10-.7 12.1A2 2 0 0 1 13.3 21h-2.6a2 2 0 0 1-2-1.9L8 7" />
+                    </svg>
+                  </button>
+                  <button class="log-expand-btn" type="button" data-action="open-daily-log-editor" data-log-editor-key="inspiration" title="Expand editor" aria-label="Expand 灵感-审视">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <textarea data-log-key="inspiration" aria-label="灵感-审视" placeholder="今天冒出来的念头，值得审视的判断..."></textarea>
+            </div>
+            <div class="log-block">
+              <div class="log-block-header">
+                <span>工作-清单</span>
+                <div class="log-block-actions">
+                  <button class="log-clear-btn" type="button" data-action="clear-daily-log-field" data-log-editor-key="plan" title="Clear text" aria-label="Clear 工作-清单">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 7h12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-7 4v6m4-6v6m4-10-.7 12.1A2 2 0 0 1 13.3 21h-2.6a2 2 0 0 1-2-1.9L8 7" />
+                    </svg>
+                  </button>
+                  <button class="log-expand-btn" type="button" data-action="open-daily-log-editor" data-log-editor-key="plan" title="Expand editor" aria-label="Expand 工作-清单">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <textarea data-log-key="plan" aria-label="工作-清单" placeholder="今天要推进的工作、任务和清单..."></textarea>
+            </div>
+            <div class="log-block">
+              <div class="log-block-header">
+                <span>记录-行动</span>
+                <div class="log-block-actions">
+                  <button class="log-clear-btn" type="button" data-action="clear-daily-log-field" data-log-editor-key="action" title="Clear text" aria-label="Clear 记录-行动">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 7h12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-7 4v6m4-6v6m4-10-.7 12.1A2 2 0 0 1 13.3 21h-2.6a2 2 0 0 1-2-1.9L8 7" />
+                    </svg>
+                  </button>
+                  <button class="log-expand-btn" type="button" data-action="open-daily-log-editor" data-log-editor-key="action" title="Expand editor" aria-label="Expand 记录-行动">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <textarea data-log-key="action" aria-label="记录-行动" placeholder="实际做了什么，哪些动作有效..."></textarea>
+            </div>
+            <div class="log-block">
+              <div class="log-block-header">
+                <span>日课-创作</span>
+                <div class="log-block-actions">
+                  <button class="log-clear-btn" type="button" data-action="clear-daily-log-field" data-log-editor-key="creation" title="Clear text" aria-label="Clear 日课-创作">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 7h12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-7 4v6m4-6v6m4-10-.7 12.1A2 2 0 0 1 13.3 21h-2.6a2 2 0 0 1-2-1.9L8 7" />
+                    </svg>
+                  </button>
+                  <button class="log-expand-btn" type="button" data-action="open-daily-log-editor" data-log-editor-key="creation" title="Expand editor" aria-label="Expand 日课-创作">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <textarea data-log-key="creation" aria-label="日课-创作" placeholder="日课、练习、输出、创作痕迹..."></textarea>
+            </div>
+          </div>
+
+          <div class="log-export-actions">
+            <button class="focus-btn primary" data-action="generate-daily-log">生成每日汇总</button>
+            <button class="focus-btn" data-action="download-daily-log">导出单日.md</button>
+            <button class="focus-btn" data-action="download-weekly-log">导出一周.md</button>
+            <button class="focus-btn" data-action="export-workspace-markdown">导出全部.md</button>
+            <button class="focus-btn" data-action="export-workspace-day">导出单日 JSON</button>
+            <button class="focus-btn" data-action="export-workspace-week">导出单周 JSON</button>
+            <button class="focus-btn" data-action="export-workspace">导出全部 JSON</button>
+            <button class="focus-btn" data-action="import-workspace-day">导入单日 JSON</button>
+            <button class="focus-btn" data-action="import-workspace-week">导入单周 JSON</button>
+            <button class="focus-btn" data-action="import-workspace">导入全部 JSON</button>
+            <button class="focus-btn" data-action="create-workspace-backup">创建工作区备份</button>
+            <button class="focus-btn" data-action="open-workspace-backups">历史备份</button>
+            <button class="focus-btn" data-action="open-device-migration">设备迁移</button>
+            <input class="workspace-import-input" id="workspaceImportInput" type="file" accept="application/json,.json">
+          </div>
+        </div>
+      </aside>
+
+      <div class="daily-log-output-wrap">
+        <div class="daily-log-output-tools">
+          <button class="log-copy-btn output" type="button" data-action="copy-daily-log" title="Copy generated log" aria-label="Copy generated log">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 4h7a4 4 0 0 1 4 4v7M4 16V8a4 4 0 0 1 4-4h5" />
+            </svg>
+          </button>
+          <button class="log-expand-btn output" type="button" data-action="open-daily-log-editor" data-log-editor-key="generated" title="Expand generated log" aria-label="Expand generated log">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+            </svg>
+          </button>
+        </div>
+        <textarea class="daily-log-output" id="dailyLogOutput" readonly placeholder="Generated daily log will appear here."></textarea>
+      </div>
+    </div>
+    <section id="flomoSection" class="flomo-section workspace-tab-panel" role="tabpanel" aria-labelledby="workspaceTabFlomo" aria-label="flomo 笔记" hidden>
+    <div class="flomo-heading"><div><span class="flomo-kicker">随时记录 · 慢慢归拢</span><h2>flomo</h2></div><span id="flomoLibraryLabel">本机笔记</span><label>配色 <select id="flomoPalette"><option value="green">青绿</option><option value="paper">暖纸</option><option value="blue">雾蓝</option></select></label></div>
+    <div class="flomo-layout">
+      <aside class="flomo-tags"><h3>标签</h3><button id="flomoAll">全部笔记</button><button id="flomoTrash">回收站</button><input id="flomoTagSearch" type="search" placeholder="查找标签" aria-label="查找标签"><div id="flomoPinned"></div><nav id="flomoTags" aria-label="笔记标签"></nav></aside>
+      <div class="flomo-main"><input id="flomoSearch" type="search" placeholder="搜索笔记与标签" aria-label="搜索笔记与标签"><form id="flomoComposer"><textarea id="flomoBody" placeholder="现在的想法是…  输入 #标签 或 #清单/复盘" aria-label="笔记正文"></textarea></form><p id="flomoMessage" role="status"></p><div id="flomoTrashActions" class="flomo-trash-actions" hidden><button id="flomoTrashSelectAll">全选 / 取消全选</button><span id="flomoTrashCount">已选 0 条</span><button id="flomoPurgeSelected" disabled>彻底删除所选</button></div><div id="flomoNotes"></div></div>
+      <aside class="flomo-transfer"><h3>导入导出</h3><p>按标签与创建时间筛选，日期包含起止两天。</p><label>标签<select id="flomoExportTag"><option value="">全部标签</option></select></label><label>开始日期<input type="date" id="flomoStart"></label><label>结束日期<input type="date" id="flomoEnd"></label><label class="flomo-check"><input type="checkbox" id="flomoIncludeTrash">包含回收站</label><p id="flomoExportCount"></p><div class="flomo-pair"><button id="flomoExportMd">导出 .md</button><button id="flomoExportJson">导出 .json</button></div><button id="flomoImport">导入 MD / JSON</button><input id="flomoImportFile" type="file" accept=".json,.md,.txt" hidden><div id="flomoImportPreview" hidden></div><h3>flomo 同步</h3><p id="flomoSyncHelp">正在确认同步状态…</p><button id="flomoAccount">开启 flomo 同步</button><button id="flomoSync">立即同步</button><p id="flomoSyncStatus"></p><div id="flomoConflict" hidden><p>两端内容存在冲突，两个版本已保留。</p><button data-flomo-resolution="both">保留两份</button><button data-flomo-resolution="local">使用本机版本</button><button data-flomo-resolution="remote">使用云端版本</button></div><details class="flomo-backups"><summary>备份与本机记录</summary><p>修改前备份用于找回导入或冲突处理前的内容，导出后可从上方导入。</p><button id="flomoRecovery" hidden>导出修改前备份</button><button id="flomoLocal" hidden>查看启用前的本机记录</button><p>查看原记录不会删除同步笔记。</p><button id="flomoReconnect">重新连接后台</button></details><p class="flomo-footnote">图片附件暂留原设备；导出与同步记录附件数量。</p></aside>
+    </div>
+    </section>
+  </section>
+
+  <!-- ================================================================
+       FOOTER — global stats + refresh control
+       ================================================================ -->
+  <footer>
+    <div class="footer-stats">
+      <div class="stat">
+        <div class="stat-num" id="statTabs">—</div>
+        <div class="stat-label">Open tabs</div>
+      </div>
+    </div>
+    <div class="last-refresh">
+      <button class="back-to-timer-btn" type="button" data-action="scroll-to-focus-timer" title="Back to timer" aria-label="Back to timer">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 0-6 6m6-6 6 6" />
+        </svg>
+      </button>
+      <span style="color: var(--muted); font-size: 11px;"><span>Inner Garden · 美日心灵</span> · Based on Tab Out by <a href="https://x.com/zarazhangrui" target="_top" style="color: var(--muted); text-decoration: underline; text-underline-offset: 2px;">Zara</a></span>
+    </div>
+  </footer>
+
+</div><!-- end .container -->
+
+<!-- ================================================================
+     TOAST — floats above everything, used for action confirmations
+     Hidden by default via CSS (opacity:0, translateY)
+     ================================================================ -->
+<dialog class="sync-dialog" id="workspaceSyncDialog" aria-labelledby="syncDialogTitle">
+  <div class="sync-dialog-head">
+    <div>
+      <span class="sync-dialog-kicker">INNER GARDEN · 美日心灵 账号</span>
+      <h2 id="syncDialogTitle">让每台设备，都接上你的节奏</h2>
+    </div>
+    <button class="sync-dialog-close" type="button" data-action="close-sync-panel" aria-label="关闭账号与同步设置">&times;</button>
+  </div>
+  <div id="syncDialogBody"></div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <!-- Checkmark circle icon (Heroicons outline) -->
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+  </svg>
+  <span id="toastText"></span>
+</div>
+
+<!-- Optional account sync uses the existing CloudBase service. -->
+<script src="config.js"></script>
+<script src="config-finalize.js"></script>
+<script src="page-bootstrap.js"></script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+{
+  "reviewedAt": "2026-09-30",
+  "scope": "all 13 bundled prompts",
+  "method": "Inspect supplied source comment and attribution/license fields. A title, method name or bundled copy does not establish redistribution rights.",
+  "approvedEntries": 0,
+  "entries": [
+    {
+      "title": "专家会诊",
+      "characters": 295,
+      "sha256": "52c3d9a32ac2eda0c693aa082ef5d31e608ac958ba67bda17516685dd10c0112",
+      "decision": "excluded-pending-redistribution-evidence",
+      "reason": "No verifiable redistribution license supplied for this prompt in the copied source.",
+      "attributedAuthor": "",
+      "redistributionEvidence": "not supplied"
+    },
+    {
+      "title": "事实核查",
+      "characters": 319,
+      "sha256": "c9162f983b44f5e4ad8df6c6c54c61b4822b669ac2af83535eddd691bdc67148",
+      "decision": "excluded-pending-redistribution-evidence",
+      "reason": "No verifiable redistribution license supplied for this prompt in the copied source.",
+      "attributedAuthor": "",
+      "redistributionEvidence": "not supplied"
+    },
+    {
+      "title": "人生设计术",
+      "characters": 1945,
+      "sha256": "dda9fa42eb8edc97f5f179181242311b192443e90a387e85794a3451c9848f21",
+      "decision": "excluded-pending-redistribution-evidence",
+      "reason": "No verifiable redistribution license supplied for this prompt in the copied source.",
+      "attributedAuthor": "",
+      "redistributionEvidence": "not supplied"
+    },
+    {
+      "title": "双向钢人论证",
+      "characters": 183,
+      "sha256": "35eaffab989e131bd11892613d46c9e1fb717931c2b0d29c5c4528721fe22018",
+      "decision": "excluded-pending-redistribution-evidence",
+      "reason": "No verifiable redistribution license supplied for this prompt in the copied source.",
+      "attributedAuthor": "",
+      "redistributionEvidence": "not supplied"
+    },
+    {
+      "title": "双层解释法",
+      "characters": 158,
+      "sha256": "9433c01b924889d0e33bbae7e50a5ab41bdaab8e1fa618da56dc92412b13c2e8",
+      "decision": "excluded-pending-redistribution-evidence",
+      "reason": "No verifiable redistribution license supplied for this prompt in the copied source.",
+      "attributedAuthor": "",
+      "redistributionEvidence": "not supplied"
+    },
+    {
+      "title": "反向拆解",
+      "characters": 236,
+      "sha256": "98442fc8b1dfe929b85de60fe7814edd01df89a795af174e9aecd68a00d5e18e",
+      "decision": "excluded-pending-redistribution-evidence",
+      "reason": "No verifiable redistribution license supplied for this prompt in the copied source.",
+      "attributedAuthor": "",
+      "redistributionEvidence": "not supplied"
+    },
+    {
+      "title": "挖掘隐藏天赋",
+      "characters": 1067,
+      "sha256": "4173c0308b1a494a438185ed906e5bc6576c7b4e3f8e9fad3371b7757397ddd9",
+      "decision": "excluded-pending-redistribution-evidence",
+      "reason": "No verifiable redistribution license supplied for this prompt in the copied source.",
+      "attributedAuthor": "",
+      "redistributionEvidence": "not supplied"
+    },
+    {
+      "title": "最小实验",
+      "characters": 209,
+      "sha256": "ce853f28e035ff49031f1e8a9076a94a3158c69712ea49a6c3b57d08f6e0cbad",
+      "decision": "excluded-pending-redistribution-evidence",
+      "reason": "No verifiable redistribution license supplied for this prompt in the copied source.",
+      "attributedAuthor": "",
+      "redistributionEvidence": "not supplied"
+    },
+    {
+      "title": "第一性原理",
+      "characters": 205,
+      "sha256": "8b3503d6cc097e4017e15d2dc4cdb417ba379b73f0779964e98a5e4056b68d86",
+      "decision": "excluded-pending-redistribution-evidence",
+      "reason": "No verifiable redistribution license supplied for this prompt in the copied source.",
+      "attributedAuthor": "",
+      "redistributionEvidence": "not supplied"
+    },
+    {
+      "title": "纵横分析法",
+      "characters": 7513,
+      "sha256": "58ec9330c6f8c943c332b4d5a51576f186201ccab652bb80311e2f06fea734a8",
+      "decision": "excluded-pending-redistribution-evidence",
+      "reason": "No verifiable redistribution license supplied for this prompt in the copied source.",
+      "attributedAuthor": "数字生命卡兹克（Khazix）",
+      "redistributionEvidence": "not supplied"
+    },
+    {
+      "title": "纵横分析法（简）",
+      "characters": 484,
+      "sha256": "4588bd37a4df76fe5770eb0aebdfa7c22b62a6d2ec4885e0b37e135507344545",
+      "decision": "excluded-pending-redistribution-evidence",
+      "reason": "No verifiable redistribution license supplied for this prompt in the copied source.",
+      "attributedAuthor": "",
+      "redistributionEvidence": "not supplied"
+    },
+    {
+      "title": "苏格拉底式提问",
+      "characters": 410,
+      "sha256": "7cd812772effbcf7da2d588c053fb9254420d2c8658c42de01adc6a077c682b8",
+      "decision": "excluded-pending-redistribution-evidence",
+      "reason": "No verifiable redistribution license supplied for this prompt in the copied source.",
+      "attributedAuthor": "",
+      "redistributionEvidence": "not supplied"
+    },
+    {
+      "title": "跨领域借解",
+      "characters": 271,
+      "sha256": "571f014898ecf2c7025b499d71988efb4eda2722b67e76057efc3375226288ba",
+      "decision": "excluded-pending-redistribution-evidence",
+      "reason": "No verifiable redistribution license supplied for this prompt in the copied source.",
+      "attributedAuthor": "",
+      "redistributionEvidence": "not supplied"
+    }
+  ]
+}

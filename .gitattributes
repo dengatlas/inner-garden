@@ -1,0 +1,12 @@
+* text=auto eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.ttf binary
+*.png binary
+# Preserve the original OFL notice bytes, including upstream trailing spaces.
+extension/fonts/*-OFL.txt -text -whitespace

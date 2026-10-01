@@ -1,0 +1,12 @@
+{
+  "schema": "inner-garden-public-policy-v1",
+  "version": "1.2.0",
+  "servicePolicy": "existing-cloudbase-all-service-eligible-accounts",
+  "environmentId": "dk-checkin-d8gw6jhrt5b2ced62",
+  "extensionId": "ohdenlpjdfngpaaggijhcagfpafecgdn",
+  "oldExtensionId": "kcijljpopjgbfadpcbkcclfojhdihdcj",
+  "fontPolicy": "bundled-ofl-fonts",
+  "faviconPolicy": "local-domain-monograms",
+  "promptPolicy": "only-verifiably-redistributable",
+  "publication": "local-only"
+}
