@@ -29,7 +29,7 @@ function workerHarness(initial = {}, overrides = {}) {
     action: { async setBadgeText() {}, async setBadgeBackgroundColor() {} },
   };
   const context = vm.createContext({ chrome, crypto: webcrypto, console, URL, TextEncoder, TextDecoder,
-    setTimeout, clearTimeout, navigator: { onLine: true },
+    setTimeout, clearTimeout, AbortSignal, navigator: { onLine: true },
     fetch: async (...args) => { requests.push(args); throw new Error('Network unavailable in test'); },
   });
   context.importScripts = (...files) => {

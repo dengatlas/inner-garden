@@ -2,7 +2,7 @@
 
 本地优先的桌面 Chrome 新标签页工作区：整理标签、管理稍后再看、专注计时、安排日历与周计划、记录日课和 flomo 笔记。
 
-当前版本 **1.2.0**，源码公开于 [dengatlas/inner-garden](https://github.com/dengatlas/inner-garden)，尚未发布 GitHub Release 或提交扩展商店。保留原 CloudBase 服务；新扩展 ID 的账号来源已获授权并通过预检，真实账号登录和同步仍待验收。本机编辑无需登录。
+本地候选版本 **1.2.1**，公开源码仓库为 [dengatlas/inner-garden](https://github.com/dengatlas/inner-garden)，尚未发布 GitHub Release 或提交扩展商店。本轮增加手机当前微信账号授权电脑、UID 核对及同步状态说明；云端部署和真实双设备验收以验收记录为准。本机编辑无需登录。
 
 ## 安装
 
@@ -17,6 +17,7 @@
 - [开发与打包](docs/DEVELOPMENT.md)
 - [已确定的产品策略和云服务状态](docs/DECISIONS.md)
 - [本地验收记录](docs/ACCEPTANCE.md)
+- [手机授权电脑的流程与验收](docs/WECHAT_DESKTOP_LOGIN.md)
 - [变更记录](CHANGELOG.md)
 - [第三方素材说明](THIRD_PARTY_NOTICES.md)
 

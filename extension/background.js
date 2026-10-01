@@ -18,7 +18,7 @@
 importScripts('config.js');
 if (globalThis.TAB_OUT_LOAD_LOCAL_CONFIG) importScripts('config.local.js');
 importScripts('config-finalize.js');
-importScripts('shared/device-migration.js', 'shared/workspace-sync.js', 'shared/sync-client.js', 'workspace-background.js');
+importScripts('shared/device-migration.js', 'shared/device-auth.js', 'shared/workspace-sync.js', 'shared/sync-client.js', 'workspace-background.js');
 importScripts('shared/flomo-prompt-seed.js', 'shared/flomo.js', 'shared/flomo-sync.js', 'shared/flomo-transport.js', 'flomo-background.js');
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {

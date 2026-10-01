@@ -5,6 +5,7 @@
 - 使用简体中文说明结果，技术标识保持英文。
 - 仅维护独立桌面 Chrome MV3 新标签页工作区：标签、专注、日历、周计划、日课与 flomo。
 - 不修改原 Tab Out，不引入其 PWA、小程序、后端、个人导出或 Git 历史。
+- 2026-10-01 明确例外：用户仅授权修改 D:/tab-out/miniprogram/features/account/index.wxml、features/account/index.js 和 utils/sync-service.js，增加手机当前账号授权电脑；不修改其他原项目文件，不执行原项目生成式构建，不把这些文件引入本独立仓库。
 - 规则正文以 AGENTS.md 为准，两份同步维护。
 
 ## 当前依据

@@ -609,12 +609,14 @@
         'x-device-id': this.state.deviceId,
       };
       if (options.captchaToken) headers['x-captcha-token'] = options.captchaToken;
-      if (options.authorized) headers.Authorization = `Bearer ${await this.ensureAccessToken()}`;
+      if (options.accessToken) headers.Authorization = `Bearer ${options.accessToken}`;
+      else if (options.authorized) headers.Authorization = `Bearer ${await this.ensureAccessToken()}`;
       let response;
       try {
         response = await this.fetch(`${stripSlash(this.config.authBaseUrl)}${path}`, {
           method,
           headers,
+          ...(options.signal ? { signal: options.signal } : {}),
           ...(method === 'GET' || options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
         });
       } catch (cause) {

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Inner Garden · 美日心灵",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA6UEO4ldlb989XJFBpWvz4b3cDOMtFkvm/YLVmIofSTdq9/1plXs8Jq4mgG2O2eowslTIjFN++EjZDhkDZ8p1IXmZjxylyjQM2L0l7pJUA033n3+Rfoy6dofArJwRBz5W1TFwL0qRrF7AjnYwtgHo4k++qK2/y38AznwgywTHhGhL/UYV2wl7yTsLjdXJWAwBpM108w07uEaK2PmBV3eOVIPJNYnXMuXRJfVXKeaqczsRy3F6VDwETXfbPHrSEeUUzZIFnxmscdQ23kxPzxWmsCPyM6pivNxP4FgD8amNw0Cinf8HfcBSdpttC54DbiXdFJQF4dwAaXBhe+1cJUObgwIDAQAB",
   "description": "本地优先的新标签页工作区：整理标签、专注计时、安排日历与周计划、记录日课和笔记；可选账号同步。",
   "permissions": [

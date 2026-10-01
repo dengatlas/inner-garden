@@ -1,6 +1,6 @@
 {
   "schema": "inner-garden-public-policy-v1",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "servicePolicy": "existing-cloudbase-all-service-eligible-accounts",
   "environmentId": "dk-checkin-d8gw6jhrt5b2ced62",
   "extensionId": "ohdenlpjdfngpaaggijhcagfpafecgdn",

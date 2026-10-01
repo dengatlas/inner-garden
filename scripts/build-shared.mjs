@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { resolve, dirname } from 'node:path';
 export const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const sharedFiles = Object.freeze([
-  'device-migration.js', 'flomo-prompt-seed.js', 'flomo-sync.js', 'flomo-transport.js',
+  'device-migration.js', 'device-auth.js', 'flomo-prompt-seed.js', 'flomo-sync.js', 'flomo-transport.js',
   'flomo.js', 'sync-client.js', 'workspace-browser-client.js', 'workspace-sync.js',
 ]);
 await mkdir(resolve(root, 'extension/shared'), { recursive: true });

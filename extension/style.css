@@ -1693,7 +1693,8 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 .sync-auth-intro { display: grid; gap: 4px; margin-bottom: 14px; }
 .sync-auth-intro strong { font-size: 16px; }
 .sync-auth-intro span { color: var(--muted); font-size: 12px; line-height: 1.65; }
-.sync-auth-methods { display: flex; gap: 8px; margin-bottom: 12px; }
+.sync-auth-methods { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.sync-auth-method { white-space: nowrap; }
 .sync-auth-method { min-height: 34px; padding: 0 12px; border: 1px solid rgba(154, 145, 138, 0.28); border-radius: 999px; background: transparent; color: var(--muted); font: 600 11px "DM Sans", sans-serif; cursor: pointer; }
 .sync-auth-method.is-active { border-color: rgba(63, 125, 103, 0.45); background: rgba(63, 125, 103, 0.09); color: #315f50; }
 .sync-auth-method:disabled, .sync-inline-action:disabled, .sync-button:disabled { cursor: not-allowed; opacity: 0.48; }
@@ -3592,3 +3593,13 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
     grid-template-columns: 1fr;
   }
 }
+/* Short-lived phone authorization and explicit account identity. */
+.sync-device-login { display: grid; gap: 12px; justify-items: center; text-align: center; }
+.sync-device-qr { width: min(240px, 100%); height: auto; border-radius: 8px; }
+.sync-device-code { font-size: 18px; }
+.sync-device-code code { font-size: 22px; font-weight: 600; letter-spacing: 2px; }
+.sync-device-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.sync-device-account { width: 100%; }
+.sync-account-uid { padding: 14px 0; }
+.sync-account-uid > span { display: block; margin-bottom: 6px; }
+.sync-account-uid code, .sync-device-account code { overflow-wrap: anywhere; user-select: text; }

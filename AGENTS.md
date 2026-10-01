@@ -5,6 +5,7 @@
 - Explain outcomes in Simplified Chinese; keep technical identifiers in English.
 - Maintain only this independent desktop Chrome Manifest V3 new-tab workspace: tabs, focus, calendar, weekly plans, daily logs and flomo.
 - Do not edit the original Tab Out project or import its PWA, Mini Program, backend, personal exports or Git history.
+- Explicit 2026-10-01 exception: the user authorized only D:/tab-out/miniprogram/features/account/index.wxml, features/account/index.js and utils/sync-service.js for current-phone-account device authorization. Do not edit other original files or run its generating build. Keep that change out of this independent repository.
 - Keep Agent_cn.md synchronized with these rules.
 
 ## Current authority

@@ -2842,7 +2842,7 @@ function renderWorkspaceSyncStatus(update = {}) {
 
   if (!configured) {
     status = 'local';
-    detailText = '请先在 config.local.js 中完成 CloudBase 配置';
+    detailText = '账号服务尚未配置，本机编辑照常保存';
   } else if (status === 'signing-in') {
     labelText = '正在登录';
     detailText = '正在安全验证你的账号';
@@ -2864,8 +2864,8 @@ function renderWorkspaceSyncStatus(update = {}) {
     labelText = '需要确认';
     detailText = `${state.conflicts || 0} 项编辑冲突已完整保留，请选择要采用的版本`;
   } else {
-    status = 'synced';
-    labelText = state.queued ? '等待同步' : '已同步';
+    status = state.lastSyncedAt ? 'synced' : 'ready';
+    labelText = state.queued ? '等待同步' : state.lastSyncedAt ? '已同步' : '尚未同步';
     detailText = state.queued ? '本机更改会在下次同步时上传' : `最近同步：${lastSynced}`;
   }
 
@@ -3094,7 +3094,7 @@ function renderSavedAccountChoices(state) {
       <div class="sync-section-title"><strong>切换账号</strong><span>只保存 10 天会话，不保存密码</span></div>
       ${accounts.map(account => `
         <div class="sync-saved-account">
-          <div><strong>${escapeHtml(account.username || 'Inner Garden · 美日心灵 账号')}</strong><span>${account.usable ? `免密登录至 ${escapeHtml(formatWorkspaceSyncTimestamp(account.trustedUntil, '会话到期'))}` : '会话已过期，需要重新登录'}</span></div>
+          <div><strong>${escapeHtml(account.username || 'Inner Garden · 美日心灵 账号')}</strong><span>UID：${escapeHtml(account.userId || String(account.accountId || '').replace(/^uid:/, ''))}</span><span>${account.usable ? `免密登录至 ${escapeHtml(formatWorkspaceSyncTimestamp(account.trustedUntil, '会话到期'))}` : '会话已过期，需要重新登录'}</span></div>
           <button class="sync-button subtle" type="button" data-action="switch-workspace-account" data-account-id="${escapeAttr(account.accountId)}" ${account.usable ? '' : 'disabled'}>${account.usable ? '切换' : '已过期'}</button>
         </div>`).join('')}
     </div>`;
@@ -3140,8 +3140,9 @@ function renderLoggedOutAccount() {
     <div class="sync-auth-methods" role="group" aria-label="选择登录方式">
       <button class="sync-auth-method${workspaceAccountLoginMethod === 'password' ? ' is-active' : ''}" type="button" data-action="select-login-method" data-method="password" aria-pressed="${workspaceAccountLoginMethod === 'password'}">密码登录</button>
       <button class="sync-auth-method${workspaceAccountLoginMethod === 'phone-code' ? ' is-active' : ''}" type="button" data-action="select-login-method" data-method="phone-code" aria-pressed="${workspaceAccountLoginMethod === 'phone-code'}">手机验证码登录</button>
+      <button class="sync-auth-method${workspaceAccountLoginMethod === 'phone-device' ? ' is-active' : ''}" type="button" data-action="select-login-method" data-method="phone-device" aria-pressed="${workspaceAccountLoginMethod === 'phone-device'}">手机微信授权</button>
     </div>`;
-  const loginForm = workspaceAccountLoginMethod === 'phone-code'
+  const loginForm = workspaceAccountLoginMethod === 'phone-device' ? renderDeviceLoginPanel() : workspaceAccountLoginMethod === 'phone-code'
     ? `
       <form class="sync-login-form" id="workspaceSyncCodeLoginForm" method="post" autocomplete="on">
         <input type="hidden" name="kind" value="phone">
@@ -3162,7 +3163,7 @@ function renderLoggedOutAccount() {
     <div class="sync-dialog-content">
       ${tabs}
       ${renderSavedAccountChoices(workspaceSyncClient?.getPublicState() || {})}
-      <div class="sync-auth-intro"><strong>欢迎回来</strong><span>可以使用账号密码，或使用已注册手机号和验证码登录。</span></div>
+      <div class="sync-auth-intro"><strong>欢迎回来</strong><span>手机上的微信账号请选择“手机微信授权”；也可使用账号密码或已注册手机号登录。同昵称可能属于不同账号。</span></div>
       ${loginMethodSelector}
       ${loginForm}
     </div>`;
@@ -3221,8 +3222,9 @@ function renderSignedInAccount(state) {
       <div class="sync-auth-methods" role="group" aria-label="选择登录方式">
         <button class="sync-auth-method${workspaceAccountLoginMethod === 'password' ? ' is-active' : ''}" type="button" data-action="select-login-method" data-method="password" aria-pressed="${workspaceAccountLoginMethod === 'password'}">密码登录</button>
         <button class="sync-auth-method${workspaceAccountLoginMethod === 'phone-code' ? ' is-active' : ''}" type="button" data-action="select-login-method" data-method="phone-code" aria-pressed="${workspaceAccountLoginMethod === 'phone-code'}">手机验证码登录</button>
+        <button class="sync-auth-method${workspaceAccountLoginMethod === 'phone-device' ? ' is-active' : ''}" type="button" data-action="select-login-method" data-method="phone-device" aria-pressed="${workspaceAccountLoginMethod === 'phone-device'}">手机微信授权</button>
       </div>`;
-    const addAccountForm = workspaceAccountLoginMethod === 'phone-code'
+    const addAccountForm = workspaceAccountLoginMethod === 'phone-device' ? renderDeviceLoginPanel() : workspaceAccountLoginMethod === 'phone-code'
       ? `
         <form class="sync-login-form" id="workspaceSyncAddCodeAccountForm" method="post" autocomplete="on">
           <input type="hidden" name="kind" value="phone">
@@ -3310,7 +3312,10 @@ function renderSignedInAccount(state) {
   const email = getAccountProfileValue(workspaceAccountProfile, ['email', 'email_address', 'emailAddress']);
   const phone = getAccountProfileValue(workspaceAccountProfile, ['phone_number', 'phone', 'phoneNumber']);
   const hasRecovery = Boolean(email || phone);
-  const connectionStatus = state.lastSyncedAt
+  const connectionStatus = workspaceSyncStatus === 'error' ? `账号已登录 · 日程同步失败：${workspaceSyncDetail || '请重试'}`
+    : workspaceSyncStatus === 'offline' ? '账号已登录 · 当前离线，修改保存在本机'
+    : workspaceSyncStatus === 'syncing' ? '账号已登录 · 正在同步日程'
+    : state.lastSyncedAt
     ? `已同步 · 云端版本 ${state.cursor || 0} · 上传 ${lastSummary.uploaded || 0} 项 · 接收 ${lastSummary.downloaded || 0} 项 · 最近成功同步 ${lastSynced}`
     : '账号已连接，正在等待首次同步';
   return `
@@ -3319,14 +3324,15 @@ function renderSignedInAccount(state) {
         <div><div class="sync-session-badge">已登录</div><div class="sync-account-name">${escapeHtml(state.username || 'Inner Garden · 美日心灵 账号')}</div><div class="sync-dialog-note">登录于 ${escapeHtml(signedIn)} · 最近成功同步 ${escapeHtml(lastSynced)}</div><div class="sync-dialog-note">待同步 ${state.queued} 项 · 冲突 ${state.conflicts} 项</div></div>
         <div class="sync-account-row-actions"><button class="sync-button subtle" type="button" data-action="sync-logout">退出当前账号</button><button class="sync-button subtle" type="button" data-action="select-account-view" data-view="switch-account">切换账号</button></div>
       </div>
+      <div class="sync-account-uid"><span>账号 UID</span><code>${escapeHtml(state.userId || '暂未取得')}</code><p class="sync-field-help">两端 UID 相同，才是同一个账号。昵称、Chrome 账号与插件 ID 均不能代替它。</p></div>
       <div class="sync-account-identities" aria-label="已绑定的联系方式">
         <div class="sync-identity-card"><span>邮箱</span><strong>${escapeHtml(workspaceAccountProfileLoading ? '读取中…' : maskAccountContact(email, 'email'))}</strong><button type="button" data-action="start-account-bind" data-kind="email">${email ? '更换' : '绑定邮箱'}</button></div>
         <div class="sync-identity-card"><span>手机号</span><strong>${escapeHtml(workspaceAccountProfileLoading ? '读取中…' : maskAccountContact(phone, 'phone'))}</strong><button type="button" data-action="start-account-bind" data-kind="phone">${phone ? '更换' : '绑定手机'}</button></div>
       </div>
-      ${hasRecovery ? '' : renderAccountFeedback('请尽快绑定恢复方式', '当前账号没有邮箱或手机号。忘记密码后只能联系管理员人工核验，无法自助找回。', '账号风险', 'error')}
+      ${hasRecovery || workspaceAccountProfileLoading || workspaceAccountProfile?.loadError ? '' : renderAccountFeedback('当前未绑定邮箱或手机号', '微信身份可以独立使用。桌面密码／短信登录需要属于这个 UID 的相应凭据；绑定联系方式的现有流程还要求当前密码。', '登录方式')}
       ${workspaceAccountProfile?.loadError ? `<p class="sync-dialog-note">${escapeHtml(workspaceAccountProfile.loadErrorDetail || '联系方式暂时读取失败，请稍后重试。')} <button class="sync-inline-action" type="button" data-action="refresh-account-profile">重新读取</button></p>` : ''}
       <div class="sync-account-actions">
-        <button class="sync-button subtle" type="button" data-action="start-password-change" ${hasRecovery ? '' : 'disabled'}>修改密码</button>
+        <button class="sync-button subtle" type="button" data-action="start-password-change">修改密码</button>
         <button class="sync-button subtle" type="button" data-action="select-account-view" data-view="add-account">添加其他账号</button>
       </div>
       <div class="sync-dialog-connection" id="syncDialogConnectionStatus" role="status" aria-live="polite">${escapeHtml(connectionStatus)}</div>
@@ -3334,7 +3340,7 @@ function renderSignedInAccount(state) {
         <button class="sync-auth-method${workspaceSyncMode === 'auto' ? ' is-active' : ''}" type="button" data-action="set-workspace-sync-mode" data-mode="auto" aria-pressed="${workspaceSyncMode === 'auto'}">自动同步</button>
         <button class="sync-auth-method${workspaceSyncMode === 'manual' ? ' is-active' : ''}" type="button" data-action="set-workspace-sync-mode" data-mode="manual" aria-pressed="${workspaceSyncMode === 'manual'}">手动同步</button>
       </div>
-      <p class="sync-dialog-note">自动模式在插件页面可见时约每 12 分钟交换一次数据；本地编辑会立即保存。手动模式只在点击“立即同步”时交换数据，换电脑前建议主动同步一次。</p>
+      <p class="sync-dialog-note">日程同步包含全部日期的日历、周计划和日课。自动模式在插件页面可见时约每 12 分钟检查；本地编辑立即保存。手动模式由“立即同步”触发，登录和切换账号也会尝试首次同步。flomo 需要单独开启与同步，图片和草稿留在本机。</p>
       <button class="sync-button" type="button" data-action="download-sync-backup">下载首次同步前的备份</button>
       ${conflicts.length ? `<div class="sync-conflict-list">${conflicts.map(conflict => `
         <div class="sync-conflict-card">
@@ -5858,7 +5864,7 @@ document.addEventListener('click', async (e) => {
   }
 
   if (action === 'select-login-method') {
-    workspaceAccountLoginMethod = actionEl.dataset.method === 'phone-code' ? 'phone-code' : 'password';
+    workspaceAccountLoginMethod = ['phone-code', 'phone-device'].includes(actionEl.dataset.method) ? actionEl.dataset.method : 'password';
     if (workspaceAccountLoginMethod === 'phone-code') workspaceAccountKind = 'phone';
     workspaceAccountVerification = null;
     workspaceAccountCaptcha = null;

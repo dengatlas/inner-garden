@@ -1,6 +1,6 @@
 {
   "name": "inner-garden-extension",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "description": "Independent local-first Chrome new-tab extension",
   "scripts": {

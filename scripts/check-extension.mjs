@@ -59,7 +59,7 @@ for (const file of ['style.css', 'flomo.css', 'migration.css', 'fonts/fonts.css'
 for (const match of (await read('extension/background.js')).matchAll(/importScripts\(([^)]+)\)/g)) {
   for (const part of match[1].matchAll(/['"]([^'"]+)['"]/g)) if (part[1] !== 'config.local.js') await reference('background.js', part[1]);
 }
-for (const match of (await read('extension/page-bootstrap.js')).matchAll(/['"]((?:shared\/)?[\w-]+\.js)['"]/g)) await reference('page-bootstrap.js', match[1]);
+for (const match of (await read('extension/page-bootstrap.js')).matchAll(/['"]((?:(?:shared|vendor)\/)?[\w-]+\.js)['"]/g)) await reference('page-bootstrap.js', match[1]);
 for (const target of [manifest.background.service_worker, manifest.chrome_url_overrides.newtab, manifest.options_page, ...Object.values(manifest.icons)]) await reference('manifest.json', target);
 const app = await read('extension/app.js');
 assert(!/google\.com\/s2\/favicons|onerror\s*=/.test(app), 'Remote favicon or inline handler remains');
@@ -72,6 +72,8 @@ assert(!config.defaultUsername, 'Personal username in public defaults');
 assert(config.pollIntervalMs === 720000 && ['authBaseUrl', 'apiBaseUrl', 'flomoApiBaseUrl'].every(key => /^https:\/\//.test(config[key])), 'Cloud endpoints or interval invalid');
 const fonts = JSON.parse(await read('docs/font-assets.json'));
 for (const asset of fonts.assets) assert(createHash('sha256').update(await readFile(resolve(root, 'extension/fonts', asset.file))).digest('hex') === asset.sha256, `Font asset differs: ${asset.file}`);
+const qrAsset = JSON.parse(await read('docs/qr-assets.json'));
+assert(createHash('sha256').update(await readFile(resolve(root, 'extension', qrAsset.file))).digest('hex') === qrAsset.sha256, 'Bundled QR asset differs from reviewed upstream');
 for (const file of ['README.md', 'THIRD_PARTY_NOTICES.md', 'CHANGELOG.md', ...(await readdir(resolve(root, 'docs'))).filter(name => name.endsWith('.md')).map(name => `docs/${name}`)]) {
   const content = await read(file);
   assert(!/[ \t]+$/m.test(content), `Trailing whitespace: ${file}`);

@@ -4,7 +4,10 @@
 const workspaceContract = globalThis.TabOutWorkspaceSync;
 const workspaceMethods = new Set(['login', 'loginWithVerification', 'register', 'resetPassword', 'logout', 'switchAccount', 'bindContact', 'changePassword', 'getAccountProfile', 'getCaptchaData', 'sendVerification', 'verifyCaptchaData', 'verifyVerification', 'resolveConflict']);
 const workspaceAccountMethods = new Set(['login', 'loginWithVerification', 'register', 'resetPassword', 'logout', 'switchAccount', 'resolveConflict']);
+workspaceAccountMethods.add('confirmDeviceLogin');
+workspaceMethods.add('confirmDeviceLogin');
 let backgroundWorkspace, backgroundSyncClient, workspaceReady;
+let deviceAuthorization;
 let workspaceRevision = 0;
 let workspaceWrites = Promise.resolve();
 let workspaceControls = Promise.resolve();
@@ -64,6 +67,10 @@ async function initializeBackgroundWorkspace() {
     onStatus: update => chrome.runtime.sendMessage({ channel: 'tab-out-workspace-status', update }).catch(() => {}),
   });
   await backgroundSyncClient.load();
+  deviceAuthorization = new globalThis.InnerGardenDeviceAuth.DeviceAuthorization({
+    request: (path, options) => backgroundSyncClient.authRequest(path, { ...options, signal: AbortSignal.timeout(15000) }),
+    clientId: globalThis.TAB_OUT_SYNC_CONFIG.environmentId,
+  });
   if (stored.tabOutWorkspaceOwner && stored.tabOutWorkspaceOwner !== (workspaceOwnerId() || 'local')) {
     // Preserve the only copy when an interrupted switch or configuration
     // migration has no outgoing snapshot. An existing snapshot may contain
@@ -99,6 +106,13 @@ async function mergePageWorkspace(message) {
 }
 async function controlWorkspace(message) {
   await workspaceWrites;
+  const accountId = backgroundSyncClient.getPublicState().accountId || '';
+  if (message.method === 'startDeviceLogin') return workspaceEnvelope(await deviceAuthorization.start(accountId));
+  if (message.method === 'pollDeviceLogin') return workspaceEnvelope(await deviceAuthorization.poll(message.args?.[0], accountId));
+  if (message.method === 'cancelDeviceLogin') {
+    if (deviceAuthorization.challenge?.id === message.args?.[0]) deviceAuthorization.cancel();
+    return workspaceEnvelope({ status: 'cancelled' });
+  }
   if (message.method === 'sync') {
     const reason = String(message.reason || 'manual');
     const automatic = reason === 'automatic';
@@ -125,8 +139,17 @@ async function controlWorkspace(message) {
   const previousWorkspace = workspaceContract.clone(backgroundWorkspace);
   const args = message.args || [];
   if (message.method === 'resolveConflict') args[2] = workspaceContract.clone(backgroundWorkspace);
-  const value = await backgroundSyncClient[message.method](...args);
+  let value;
+  if (message.method === 'confirmDeviceLogin') {
+    const granted = deviceAuthorization.consume(args[0], accountId, args[1]);
+    await backgroundSyncClient.setAuthenticatedSession(granted.label, granted.session);
+    value = backgroundSyncClient.getPublicState();
+  } else {
+    value = await backgroundSyncClient[message.method](...args);
+  }
+  if (['login', 'loginWithVerification', 'register', 'resetPassword', 'logout', 'switchAccount'].includes(message.method)) deviceAuthorization.cancel();
   if (workspaceOwnerId() !== previousOwner) {
+    deviceAuthorization.cancel();
     const accounts = await workspaceStorage.get('tabOutAccountWorkspaces') || {};
     accounts[previousOwner || 'local'] = previousWorkspace;
     await workspaceStorage.set('tabOutAccountWorkspaces', accounts);

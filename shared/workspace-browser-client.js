@@ -68,7 +68,7 @@
     }
     async sync(reason = 'manual') { return (await this.request('sync', { reason })).value; }
   };
-  for (const method of ['login', 'loginWithVerification', 'register', 'resetPassword', 'logout', 'switchAccount', 'bindContact', 'changePassword', 'getAccountProfile', 'getCaptchaData', 'sendVerification', 'verifyCaptchaData', 'verifyVerification', 'resolveConflict']) {
+  for (const method of ['login', 'loginWithVerification', 'register', 'resetPassword', 'logout', 'switchAccount', 'bindContact', 'changePassword', 'getAccountProfile', 'getCaptchaData', 'sendVerification', 'verifyCaptchaData', 'verifyVerification', 'resolveConflict', 'startDeviceLogin', 'pollDeviceLogin', 'cancelDeviceLogin', 'confirmDeviceLogin']) {
     root.TabOutWorkspaceBrowserClient.prototype[method] = async function (...args) { return (await this.request(method, { args })).value; };
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

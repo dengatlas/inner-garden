@@ -14,7 +14,7 @@
   }
   for (const source of [
     'local-favicon.js', 'shared/workspace-sync.js', 'shared/sync-client.js',
-    'shared/workspace-browser-client.js', 'app.js', 'shared/flomo.js',
+    'shared/workspace-browser-client.js', 'vendor/qrcodegen.js', 'device-login.js', 'app.js', 'shared/flomo.js',
     'flomo-editor-tools.js', 'flomo-channel.js', 'flomo.js',
   ]) {
     await new Promise((resolve, reject) => {
