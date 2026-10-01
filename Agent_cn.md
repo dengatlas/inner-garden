@@ -9,7 +9,7 @@
 
 ## 当前依据
 
-- docs/DECISIONS.md 和 docs/decisions/public-edition.json 记录已确认的 1B/2A/3A/4A/5A：现有 CloudBase 面向服务允许的账号、新固定 ID、本地字体图标、审查 prompt、本地交付与独立 Git。
+- docs/DECISIONS.md 和 docs/decisions/public-edition.json 记录已确认的 1B/2A/3A/4A/5A 及后续公开仓库授权：现有 CloudBase 面向服务允许的账号、新固定 ID、本地字体图标、审查 prompt 与独立 Git。
 - docs/ACCEPTANCE.md 记录当前验证和待验收事项；自动检查、浏览器验收、云账号验收、发布分开报告。
 - MIGRATION_HANDOFF.md、PUBLIC_RELEASE_PLAN.md、COPY_BASELINE.json 是被忽略的历史交接材料，不代表当前产品策略；不重写基线掩盖有意变化。
 - 新 ID 是 ohdenlpjdfngpaaggijhcagfpafecgdn，保持稳定。账号服务目前拒绝新来源；不能仅凭配置宣称全部账号已可用。
@@ -33,8 +33,8 @@
 
 ## 分发与 Git
 
-- 本目录已获确认为独立 Git 根，工作分支用 codex/；当前 codex/public-edition 不继承 remote，不初始化其他项目。
+- 本目录已获确认为独立 Git 根，工作分支用 codex/；当前分支为 codex/public-edition，origin 为 https://github.com/dengatlas/inner-garden.git。不继承原项目历史和 remote，不初始化其他项目。
 - npm run package 按 scripts/extension-files.mjs 白名单打包，包含 LICENSE、字体/图标许可和安装/隐私说明，排除 config.local.js 与私人数据。
 - 安装方式为解压、Chrome 开发者模式、加载含 manifest 的目录；不承诺任意 CRX 拖拽或 GitHub 自动更新。
 - manifest、package.json、策略和 changelog 版本保持一致；最终内容变化后重建并验证包。
-- 当前只授权本地工作，不上传、不创建远程仓库、不发 Release、不提交商店。
+- 用户于 2026-09-30 授权创建公开仓库 dengatlas/inner-garden 并推送本独立项目。Release、商店提交和远程服务修改仍需单独授权。

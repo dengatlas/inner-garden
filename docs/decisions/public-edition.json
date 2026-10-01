@@ -8,5 +8,6 @@
   "fontPolicy": "bundled-ofl-fonts",
   "faviconPolicy": "local-domain-monograms",
   "promptPolicy": "only-verifiably-redistributable",
-  "publication": "local-only"
+  "publication": "public-source-repository",
+  "repositoryUrl": "https://github.com/dengatlas/inner-garden"
 }

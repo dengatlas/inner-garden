@@ -9,6 +9,10 @@
 - 内置 prompt：只分发许可证据明确的内容。复制来的 13 份暂缺证据，首版不内置；不删除已有笔记。
 - 范围：只完成本地源码、安装 ZIP 和可完成的验收。在本项目根目录初始化独立 Git，分支 `codex/public-edition`，不继承原历史和 remote，不上传、不发布。
 
+## 后续公开仓库授权
+
+用户于 2026-09-30 追加授权：使用 `dengatlas` 创建公开仓库并推送本独立项目，供其他人访问。仓库为 [dengatlas/inner-garden](https://github.com/dengatlas/inner-garden)，工作分支为 `codex/public-edition`。此授权更新上面的本地交付范围；不包含 GitHub Release、商店提交或云服务来源规则修改。
+
 ## 云服务当前阻碍
 
 2026-10-01 UTC 的无认证、无数据写入探测：新 ID 请求账号资料接口得到 `403 ORIGIN_NOT_ALLOWED`；旧 ID 得到 `400 INVALID_AUTHORIZATION`，说明旧来源被接纳而新来源被拒绝。工作区与 flomo 无凭据请求均得到网关 `401 MISSING_CREDENTIALS`，不能据此证明其账号权限或来源配置。

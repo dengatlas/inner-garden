@@ -9,7 +9,7 @@
 
 ## Current authority
 
-- docs/DECISIONS.md and docs/decisions/public-edition.json record the user's accepted 1B/2A/3A/4A/5A choices: existing CloudBase for service-eligible accounts, new fixed ID, local fonts/icons, reviewed prompt content, local-only delivery and independent Git.
+- docs/DECISIONS.md and docs/decisions/public-edition.json record the user's accepted 1B/2A/3A/4A/5A choices and subsequent public-repository authorization: existing CloudBase for service-eligible accounts, new fixed ID, local fonts/icons, reviewed prompt content and independent Git.
 - docs/ACCEPTANCE.md records current evidence and open acceptance. Do not conflate automated checks, browser acceptance, cloud-account acceptance and publication.
 - MIGRATION_HANDOFF.md, PUBLIC_RELEASE_PLAN.md and COPY_BASELINE.json are historical ignored handoff material, not current product policy. Never overwrite the baseline to conceal intentional development differences.
 - The new ID is ohdenlpjdfngpaaggijhcagfpafecgdn. Keep it stable. Existing service rejects the new account origin until authorized; do not claim all accounts are usable from configuration alone.
@@ -33,8 +33,8 @@
 
 ## Distribution and Git
 
-- Project root is confirmed as this directory. Use codex/ working branches. Current branch codex/public-edition has no inherited remote; initialize no other project.
+- Project root is confirmed as this directory. Use codex/ working branches. Current branch is codex/public-edition; origin is https://github.com/dengatlas/inner-garden.git. No original project history or remote is inherited; initialize no other project.
 - npm run package uses scripts/extension-files.mjs as an explicit allowlist. Include LICENSE, font and icon notices, installation/privacy instructions; exclude config.local.js and private data.
 - ZIP installation: extract, Chrome Developer mode, Load unpacked, select manifest directory. Do not promise arbitrary CRX drag-and-drop or GitHub automatic updates.
 - Keep version in manifest, package.json, policy and changelog consistent. Rebuild/retest a package after its final content changes.
-- The user's current authorization is local work only. Do not upload, create a remote repository, publish Releases or submit to stores.
+- The user authorized creating the public dengatlas/inner-garden repository and pushing this independent project on 2026-09-30. Releases, store submission and remote-service changes still require separate authorization.

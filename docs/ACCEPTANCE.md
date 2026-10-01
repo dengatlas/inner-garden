@@ -1,6 +1,6 @@
 # 本地验收记录
 
-版本：1.2.0。当前为本地候选，未上传、未发布。
+版本：1.2.0。源码公开于 [dengatlas/inner-garden](https://github.com/dengatlas/inner-garden)；未发布 GitHub Release 或提交扩展商店。下述浏览器和云服务证据仍按各自验收范围记录。
 
 ## 开始状态
 
@@ -52,4 +52,6 @@
 
 ## 发布
 
-没有 remote、GitHub 上传、Release 或商店提交。Edge/macOS/Linux 不在本轮实测结论内。
+用户于 2026-09-30 授权创建公开仓库并推送本独立项目，`origin` 为 `https://github.com/dengatlas/inner-garden.git`，公开分支为 `codex/public-edition`。推送前工作区干净，历史仅包含本独立项目的初始提交；77 个已跟踪文件的私人路径和常见凭据模式检查无匹配，个人配置与历史交接材料仍被 Git 忽略。
+
+没有 GitHub Release 或商店提交。公开源码不代表云账号验收通过。Edge/macOS/Linux 不在本轮实测结论内。

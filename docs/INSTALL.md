@@ -11,6 +11,10 @@
 
 从源码目录安装时，应选择 `extension/` 子目录。不要双击 HTML，也不要把 GitHub Pages 当成扩展安装方式。下载 ZIP 后需要解压；不承诺普通 Windows/macOS Chrome 可以任意拖拽 CRX 安装。
 
+## 从公开仓库安装
+
+访问 [dengatlas/inner-garden](https://github.com/dengatlas/inner-garden)，点击 **Code → Download ZIP**，解压后按上面的 Chrome 操作加载其中的 `extension/` 目录。源码 ZIP 包含可直接运行的扩展文件，无需执行构建命令。它与本地生成的安装 ZIP 目录结构不同：源码 ZIP 的 `manifest.json` 位于 `extension/` 子目录。
+
 ## 与旧版并存
 
 公开版 ID 为 `ohdenlpjdfngpaaggijhcagfpafecgdn`，旧版 ID 为 `kcijljpopjgbfadpcbkcclfojhdihdcj`。本机存储分开。Chrome 同时只使用一个新标签页替换扩展；通过扩展管理页停用其中一个来选择界面。

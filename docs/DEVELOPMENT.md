@@ -34,4 +34,4 @@ git diff --check
 
 同步修改 manifest、package.json、策略记录和 CHANGELOG。固定 ID 记录在 `docs/decisions/public-edition.json`。保留历史 COPY_BASELINE；开发后的历史哈希不匹配是预期结果，不覆盖它。
 
-当前分支为 `codex/public-edition`，没有 remote。不自动上传、不继承旧 Git 历史。公开仓库地址与发布渠道由用户另行指定。
+当前分支为 `codex/public-edition`，`origin` 为 [dengatlas/inner-garden](https://github.com/dengatlas/inner-garden)。用户已授权创建此公开仓库并推送本独立项目，不继承旧 Git 历史。GitHub Release、扩展商店与云服务配置不在本次授权范围内。
