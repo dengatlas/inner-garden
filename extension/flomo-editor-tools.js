@@ -14,14 +14,34 @@
   const prefix=match[1]+(/\d/.test(match[2])?(Number.parseInt(match[2],10)+1)+'.':match[2])+' ',text='\n'+prefix;
   return {value:value.slice(0,start)+text+value.slice(end),start:start+text.length,end:start+text.length};
  }
+ function tagContext(value,start,end=start){
+  if(start!==end)return null;
+  const active=/(#[^\s#，。！？；：、,!?;:()（）\[\]【】{}<>“”「」"'`]*)$/u.exec(value.slice(0,start));
+  if(!active)return null;
+  const tail=/^[^\s#，。！？；：、,!?;:()（）\[\]【】{}<>“”「」"'`]*/u.exec(value.slice(end))[0];
+  return {start:start-active[1].length,end:end+tail.length,query:active[1].slice(1)};
+ }
+ function tagSuggestions(tags,notes,query=''){
+  const stats=new Map(tags.map(t=>[t.id,{...t,count:0,last:''}]));
+  for(const note of notes){
+   if(note.deletedAt||note.purgedAt)continue;
+   for(const id of new Set(note.tagIds)){const item=stats.get(id);if(!item)continue;item.count++;const stamp=note.updatedAt||note.createdAt||'';if(stamp>item.last)item.last=stamp;}
+  }
+  const rows=[...stats.values()].filter(t=>t.path),alpha=(a,b)=>a.path.localeCompare(b.path,'zh-CN'),frequency=(a,b)=>b.count-a.count||b.last.localeCompare(a.last)||alpha(a,b);
+  const q=query.toLocaleLowerCase();
+  if(q)return [{label:'匹配标签',tags:rows.filter(t=>t.path.toLocaleLowerCase().includes(q)).sort((a,b)=>Number(!a.path.toLocaleLowerCase().startsWith(q))-Number(!b.path.toLocaleLowerCase().startsWith(q))||frequency(a,b))}];
+  const used=rows.filter(t=>t.count);
+  if(!used.length)return [{label:'已有标签',tags:rows.sort(alpha)}];
+  return [{label:'常用标签',tags:[...used].sort(frequency).slice(0,3)},{label:'最近标签',tags:[...used].sort((a,b)=>b.last.localeCompare(a.last)||alpha(a,b)).slice(0,5)}];
+ }
  function tag(value,start,end,path){
-  const before=value.slice(0,start),active=/(?:^|\s)(#[^\s#]*)$/.exec(before);
+  const active=tagContext(value,start,end);
   if(path===undefined&&active)return {value,start,end};
-  const from=active?start-active[1].length:start;
-  const tail=active?/^[^\s#]*/.exec(value.slice(end))[0].length:0;
-  const prefix=from&&!/\s/.test(value[from-1])?' ':'';
+  const from=active?active.start:start,until=active?active.end:end;
+  const prefix=!active&&from&&!/\s/.test(value[from-1])?' ':'';
   const token=prefix+'#'+(path===undefined?'':path+' ');
-  return {value:value.slice(0,from)+token+value.slice(end+tail),start:from+token.length,end:from+token.length};
+  const rest=path!==undefined&&value[until]===' '?until+1:until;
+  return {value:value.slice(0,from)+token+value.slice(rest),start:from+token.length,end:from+token.length};
  }
  function cardBody(value,paths){
   const tags=new Set(paths.filter(Boolean));
@@ -35,5 +55,5 @@
    return removed&&!text.trim()?null:text;
   }).filter(line=>line!==null).join('\n').replace(/^\n+|\n+$/g,'');
  }
- const api={list,enter,tag,cardBody};if(typeof module==='object'&&module.exports)module.exports=api;else root.InnerGardenFlomoEditor=api;
+ const api={list,enter,tag,tagContext,tagSuggestions,cardBody};if(typeof module==='object'&&module.exports)module.exports=api;else root.InnerGardenFlomoEditor=api;
 })(globalThis);

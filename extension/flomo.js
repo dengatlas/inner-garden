@@ -4,6 +4,10 @@
  let state,owner=localStorage.getItem('flomoOwner')||sessionStorage.getItem('flomoOwner')||'',filter='',trash=false,editing=null,incoming=null,draftTimer;
  let editForm=null,editBody=null,suspendedEdit=null,saving=false,newImages=[],editImages=[];
  const imageDrawers=new WeakMap();
+ const tagEditors=new WeakMap();let tagEditorId=0;
+ function refreshTagEditors(){for(const form of document.querySelectorAll('#flomoComposer,.flomo-inline-editor'))tagEditors.get(form)?.();}
+ document.addEventListener('selectionchange',refreshTagEditors);
+ window.addEventListener('resize',refreshTagEditors);
  const trashSelected=new Set();
  const expanded=new Set(), collapsedTags=new Set(), collapsedPinned=new Set();
  let accountStatus={},accountRefresh=0;
@@ -87,6 +91,7 @@
   }
   count();
   if(focusedEditor?.isConnected){focusedEditor.focus({preventScroll:true});if(editorSelection)focusedEditor.setSelectionRange(...editorSelection);}
+  refreshTagEditors();
  }
  function openTagBatch(){
   const library=owner, selected=new Set();let confirming=false;
@@ -157,15 +162,59 @@
   const bar=element('div',undefined,'flomo-editor-toolbar'),tools=element('div',undefined,'flomo-editor-tools'),popup=element('div',undefined,'flomo-editor-popup'),counter=element('span',undefined,'flomo-char-count');popup.hidden=true;
   const insert=(before,after='')=>{const start=input.selectionStart,end=input.selectionEnd,text=input.value.slice(start,end);input.setRangeText(before+text+after,start,end,'end');input.focus();input.dispatchEvent(new Event('input'));};
   const tool=(label,title,action)=>{const b=button(label,action);b.title=title;b.setAttribute('aria-label',title);b.addEventListener('mousedown',e=>e.preventDefault());return b;};
-  tools.append(tool('#','选择或新建标签',()=>{
-   if(!popup.hidden&&popup.dataset.kind==='tags'){popup.hidden=true;return;}popup.dataset.kind='tags';
-   apply(InnerGardenFlomoEditor.tag(input.value,input.selectionStart,input.selectionEnd));
-   const search=element('input'),results=element('div',undefined,'flomo-tag-options');search.type='search';search.placeholder='搜索标签，或输入新标签（支持 父标签/子标签）';search.setAttribute('aria-label','搜索或新建标签');
-   const add=path=>{apply(InnerGardenFlomoEditor.tag(input.value,input.selectionStart,input.selectionEnd,path));popup.hidden=true;};
-   const draw=()=>{const query=search.value.trim().replace(/^#+/,'');const recent=[...state.notes].filter(n=>!n.deletedAt).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).flatMap(n=>n.tagIds);const ids=[...new Set([...recent,...state.tags.map(t=>t.id)])];const paths=ids.map(id=>F.tagPath(id,state.tags)).filter(Boolean);results.replaceChildren();for(const path of paths.filter(path=>!query||path.toLocaleLowerCase().includes(query.toLocaleLowerCase())).slice(0,12))results.append(button('# '+path,()=>add(path)));if(query&&!paths.includes(query))results.append(button('插入新标签 #'+query,()=>{if(/\s/.test(query)||query.split('/').some(part=>!part)){message('标签不能包含空格，层级名称不能为空');return;}add(query);}));};
-   search.addEventListener('input',draw);search.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.isComposing){event.preventDefault();results.querySelector('button')?.click();}});
-   popup.replaceChildren(element('small','选择标签 · 新标签随笔记保存'),search,results,button('收起',()=>{popup.hidden=true;input.focus();}));draw();popup.hidden=false;input.focus();
-  }));
+  const suggestions=element('div',undefined,'flomo-tag-suggestions');suggestions.id='flomo-tag-suggestions-'+(++tagEditorId);suggestions.hidden=true;suggestions.setAttribute('role','listbox');suggestions.setAttribute('aria-label','标签候选');
+  input.setAttribute('aria-autocomplete','list');input.setAttribute('aria-controls',suggestions.id);input.setAttribute('aria-expanded','false');
+  let composing=false,dismissed=false,drawKey='',options=[],activeIndex=0;
+  const context=()=>InnerGardenFlomoEditor.tagContext(input.value,input.selectionStart,input.selectionEnd);
+  const hideTags=()=>{suggestions.hidden=true;drawKey='';input.setAttribute('aria-expanded','false');input.removeAttribute('aria-activedescendant');};
+  const positionTags=()=>{
+   if(suggestions.hidden)return;
+   // A short-lived mirror measures wrapped text using the textarea's actual font and scroll position.
+   const mirror=element('div'),style=getComputedStyle(input),rect=input.getBoundingClientRect(),base=form.getBoundingClientRect();
+   for(const key of ['boxSizing','fontFamily','fontSize','fontWeight','fontStyle','lineHeight','letterSpacing','paddingTop','paddingRight','paddingBottom','paddingLeft','borderTopWidth','borderRightWidth','borderBottomWidth','borderLeftWidth','textIndent','tabSize'])mirror.style[key]=style[key];
+   Object.assign(mirror.style,{position:'fixed',left:'-10000px',top:'0',visibility:'hidden',width:input.clientWidth+'px',whiteSpace:'pre-wrap',overflowWrap:'break-word',borderStyle:'solid'});
+   mirror.textContent=input.value.slice(0,input.selectionStart);const caret=element('span','\u200b');mirror.append(caret);document.body.append(mirror);
+   const point=caret.getBoundingClientRect(),origin=mirror.getBoundingClientRect(),line=Number.parseFloat(style.lineHeight)||24;
+   const x=rect.left-base.left+point.left-origin.left-input.scrollLeft,y=rect.top-base.top+point.top-origin.top-input.scrollTop;
+   mirror.remove();const width=Math.min(460,form.clientWidth-28);
+   suggestions.style.width=width+'px';suggestions.style.left=Math.max(8,Math.min(x,form.clientWidth-width-8))+'px';
+   const clip=isEdit?$('flomoNotes').getBoundingClientRect():{top:0,bottom:innerHeight},above=base.top+y-Math.max(12,clip.top)-4,below=Math.min(innerHeight-12,clip.bottom)-base.top-y-line-4;
+   const up=below<Math.min(280,suggestions.scrollHeight)&&above>below;
+   suggestions.style.maxHeight=Math.max(48,Math.min(280,up?above:below))+'px';
+   const height=suggestions.offsetHeight;suggestions.style.top=(up?y-height-4:y+line+4)+'px';
+  };
+  const selectOption=index=>{activeIndex=index;options.forEach((node,i)=>node.setAttribute('aria-selected',String(i===index)));if(options[index])input.setAttribute('aria-activedescendant',options[index].id);else input.removeAttribute('aria-activedescendant');};
+  const choose=path=>{if(!context())return;apply(InnerGardenFlomoEditor.tag(input.value,input.selectionStart,input.selectionEnd,path));hideTags();};
+  const updateTags=()=>{
+   const active=context();
+   if(!state||composing||document.activeElement!==input||!active||dismissed){hideTags();return;}
+   const tags=state.tags.map(t=>({...t,path:F.tagPath(t.id,state.tags)})),groups=InnerGardenFlomoEditor.tagSuggestions(tags,state.notes,active.query);
+   const key=JSON.stringify([active.query,groups]);
+   if(key!==drawKey){
+    drawKey=key;suggestions.replaceChildren();options=[];
+    for(const group of groups){if(!group.tags.length)continue;const heading=element('div',group.label,'flomo-tag-suggestion-heading');heading.setAttribute('role','presentation');suggestions.append(heading);
+     for(const tag of group.tags){const row=button('',()=>choose(tag.path));row.className='flomo-tag-suggestion';row.id=suggestions.id+'-'+options.length;row.setAttribute('role','option');row.tabIndex=-1;
+      const q=active.query.toLocaleLowerCase(),index=q?tag.path.toLocaleLowerCase().indexOf(q):-1;
+      if(index<0)row.textContent=tag.path;else row.append(document.createTextNode(tag.path.slice(0,index)),element('mark',tag.path.slice(index,index+active.query.length)),document.createTextNode(tag.path.slice(index+active.query.length)));
+      row.addEventListener('mousedown',event=>event.preventDefault());const slot=options.length;row.addEventListener('mousemove',()=>selectOption(slot));options.push(row);suggestions.append(row);
+     }
+    }
+    if(!options.length){const empty=element('div',active.query?'没有匹配标签，继续输入可新建':'输入标签名称可新建标签','flomo-tag-suggestion-empty');empty.setAttribute('role','presentation');suggestions.append(empty);}
+    selectOption(0);suggestions.scrollTop=0;
+   }
+   suggestions.hidden=false;input.setAttribute('aria-expanded','true');selectOption(activeIndex);positionTags();
+  };
+  tagEditors.set(form,updateTags);
+  tools.append(tool('#','选择或新建标签',()=>{dismissed=false;popup.hidden=true;apply(InnerGardenFlomoEditor.tag(input.value,input.selectionStart,input.selectionEnd));updateTags();}));
+  form.append(suggestions);
+  input.addEventListener('input',()=>{dismissed=false;updateTags();});input.addEventListener('focus',updateTags);input.addEventListener('click',updateTags);input.addEventListener('scroll',positionTags);
+  input.addEventListener('blur',hideTags);input.addEventListener('compositionstart',()=>{composing=true;hideTags();});input.addEventListener('compositionend',()=>{composing=false;dismissed=false;updateTags();});
+  input.addEventListener('keydown',event=>{
+   if(composing||event.isComposing||event.keyCode===229||suggestions.hidden||event.ctrlKey||event.metaKey||event.altKey||event.shiftKey)return;
+   if(event.key==='Escape'){event.preventDefault();dismissed=true;hideTags();}
+   else if(options.length&&['ArrowDown','ArrowUp'].includes(event.key)){event.preventDefault();selectOption((activeIndex+(event.key==='ArrowDown'?1:-1)+options.length)%options.length);options[activeIndex].scrollIntoView({block:'nearest'});}
+   else if(options.length&&['Enter','Tab'].includes(event.key)){event.preventDefault();options[activeIndex].click();}
+  });
   const picker=element('input');picker.type='file';picker.accept='image/png,image/jpeg,image/webp';picker.multiple=true;picker.hidden=true;
   const gallery=element('div',undefined,'flomo-images');
   const drawImages=()=>{gallery.replaceChildren();(isEdit?editImages:newImages).forEach((source,index)=>{const item=element('div',undefined,'flomo-image-item'),img=element('img');img.src=source;img.alt='待保存图片 '+(index+1);item.append(img,button('移除',()=>{(isEdit?editImages:newImages).splice(index,1);drawImages();scheduleDraft();}));gallery.append(item);});};imageDrawers.set(form,drawImages);drawImages();
@@ -174,7 +223,7 @@
   tools.append(tool('Aa','文字格式（Markdown）',()=>{const wasOpen=!popup.hidden&&popup.dataset.kind==='format';popup.dataset.kind='format';popup.replaceChildren(element('small','文字格式 · Markdown'));for(const [label,left,right] of [['粗体','**','**'],['斜体','*','*'],['高亮','==','==']])popup.append(button(label,()=>{insert(left,right);popup.hidden=true;}));popup.hidden=wasOpen;}));
   const apply=result=>{if(!result)return;input.value=result.value;input.focus();input.setSelectionRange(result.start,result.end);input.dispatchEvent(new Event('input'));};
   tools.append(tool('☷','无序列表',()=>apply(InnerGardenFlomoEditor.list(input.value,input.selectionStart,input.selectionEnd,false))),numberTool(()=>apply(InnerGardenFlomoEditor.list(input.value,input.selectionStart,input.selectionEnd,true))));
-  input.addEventListener('keydown',event=>{if(event.key!=='Enter'||event.isComposing||event.keyCode===229||event.shiftKey||event.ctrlKey||event.metaKey)return;const result=InnerGardenFlomoEditor.enter(input.value,input.selectionStart,input.selectionEnd);if(result){event.preventDefault();apply(result);}});
+  input.addEventListener('keydown',event=>{if(event.defaultPrevented||event.key!=='Enter'||composing||event.isComposing||event.keyCode===229||event.shiftKey||event.ctrlKey||event.metaKey)return;const result=InnerGardenFlomoEditor.enter(input.value,input.selectionStart,input.selectionEnd);if(result){event.preventDefault();apply(result);}});
   const font=element('select');font.setAttribute('aria-label','编辑与阅读字体');for(const [value,label] of [['sans','默认'],['serif','宋体'],['kai','楷体']])font.append(new Option(label,value));font.value=localStorage.getItem('flomoFont')||'sans';font.addEventListener('change',()=>{localStorage.setItem('flomoFont',font.value);$('flomoSection').dataset.font=font.value;document.querySelectorAll('[aria-label="编辑与阅读字体"]').forEach(select=>select.value=font.value);});tools.append(font);
   bar.append(tools,counter);
   if(isEdit)bar.append(button('取消',async()=>{editing=null;suspendedEdit=null;editForm=null;editBody=null;await saveDraft();render();message('已取消编辑');}));
