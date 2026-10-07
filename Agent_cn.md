@@ -39,3 +39,11 @@
 - 安装方式为解压、Chrome 开发者模式、加载含 manifest 的目录；不承诺任意 CRX 拖拽或 GitHub 自动更新。
 - manifest、package.json、策略和 changelog 版本保持一致；最终内容变化后重建并验证包。
 - 用户于 2026-09-30 授权创建公开仓库 dengatlas/inner-garden 并推送本独立项目。Release、商店提交和远程服务修改仍需单独授权。
+
+## 2026-10-06 flomo coordination authority
+
+The user authorized coordinated changes in this independent extension and D:/tab-out for flomo sync from the current chat. This supersedes the earlier three-file-only exception for this task; the repositories and commits remain separate, and no remote deployment/publication is included.
+
+The canonical cross-client flomo modules are the three explicit files shared/flomo.js, shared/flomo-sync.js and shared/flomo-transport.js in D:/tab-out. Its scripts/sync-flomo-contract.mjs updates only those files in this repository and records docs/flomo-contract.json; npm run build still generates extension/shared/ locally. npm run check validates their pinned content hashes. Do not copy auth clients or prompt seeds between repositories.
+
+Explicitly enabled account libraries follow the signed-in account and join the unified manual/12-minute foreground sync trigger. The worker persists attempt throttling and each library's pending state; one engine's failure never blocks the other. Viewing the original local library remains local; account changes never copy the previous account into the new one. Drafts/images/preferences remain local. Received-note counts and pending/conflict status must remain visible, including edits made during synchronization. No backend schema change is required.

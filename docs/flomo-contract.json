@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "files": {
+    "flomo.js": "b3097256ba635ac1d47868b6a65f38367c4969f3f624d6e7d5e147397f754e23",
+    "flomo-sync.js": "b92bfd44a6422ef65bac394a5732db067eb2fd15861e17bbd8cc03e514626001",
+    "flomo-transport.js": "71332355ce27d8c730c1baf42e60943029c14535d50557956b8fb3794ef6a25e"
+  }
+}

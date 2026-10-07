@@ -120,7 +120,9 @@ async function controlWorkspace(message) {
       return workspaceEnvelope({ skipped: true, reason: 'throttled', state: backgroundSyncClient.getPublicState() });
     }
     if (automatic) await recordSyncAttempt();
-    const result = await backgroundSyncClient.sync(backgroundWorkspace, {
+    const scopes = {};
+    let result;
+    try { result = await backgroundSyncClient.sync(backgroundWorkspace, {
       getWorkspace: () => workspaceContract.clone(backgroundWorkspace),
       applyWorkspace: next => {
         const base = workspaceContract.clone(backgroundWorkspace);
@@ -129,10 +131,17 @@ async function controlWorkspace(message) {
           await saveBackgroundWorkspace();
         });
       },
-    });
+    }); scopes.workspace = { ok: true, dirty:Boolean(result.state?.queued), conflict:Boolean(result.state?.conflicts) }; }
+    catch (error) { scopes.workspace = { error: error.message }; result = { state: backgroundSyncClient.getPublicState() }; }
+    // Independent engines share a trigger, never data or failure handling.
+    const selection = await flomoWrite(flomoSelection);
+    if (selection.owner && selection.accountId === accountId && (globalThis.TAB_OUT_SYNC_CONFIG||{}).flomoApiBaseUrl) {
+      try { await flomoSync(accountId);const notes=await flomoRead(accountId);scopes.flomo = { ok: true, ...flomoEngine.status(notes), received:notes.sync?.lastResult?.received || 0 }; }
+      catch (error) { scopes.flomo = { error: error.message }; }
+    }
     if (!automatic) await recordSyncAttempt();
     broadcastWorkspace();
-    return workspaceEnvelope({ ...result, trigger: reason, workspace: workspaceContract.clone(backgroundWorkspace) });
+    return workspaceEnvelope({ ...result, scopes, trigger: reason, workspace: workspaceContract.clone(backgroundWorkspace) });
   }
   if (!workspaceMethods.has(message.method)) throw new Error('不支持的工作区操作');
   const previousOwner = workspaceOwnerId();

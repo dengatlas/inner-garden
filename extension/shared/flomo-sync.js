@@ -4,14 +4,23 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this,function(F) {
   'use strict';
   const blank = () => ({version:1,notes:[],tags:[]});
+  const INTERVAL_MS = 720000;
+  function status(state) {
+    const metadata=state.sync || {};
+    return { dirty:Boolean(metadata.pending) || !F.equal(F.portable(state),metadata.base || blank()),
+      conflict:Boolean(metadata.conflict), lastSyncedAt:metadata.lastSyncedAt || '', error:metadata.lastError || '' };
+  }
   // mutate is one serialized local transaction. Network never holds the local write lock.
   async function sync(adapter) {
     let state=await adapter.read();
+    const before=F.portable(state);
     if (state.sync && state.sync.conflict) throw new Error('有待处理的同步冲突，请先保留两份或选择版本');
     if (state.sync && state.sync.pending) await deliver(adapter,state.sync.pending);
     const remote=await adapter.request('pull',{});
     F.validate(remote.state);
     if (!Number.isSafeInteger(remote.revision) || remote.revision < 0) throw new Error('同步版本无效');
+    const previousNotes=new Map(before.notes.map(note=>[note.id,note]));
+    const received=remote.state.notes.filter(note=>!F.equal(note,previousNotes.get(note.id))).length;
     let pending, conflict=false;
     await adapter.mutate(current=>{
       const metadata=current.sync || {base:blank(),revision:0};
@@ -21,11 +30,12 @@
       }
       const next=F.applyPortable(current,merged.state);
       pending=F.equal(merged.state,remote.state) ? null : {opId:F.id('sync'),baseRevision:remote.revision,state:merged.state};
-      next.sync={base:remote.state,revision:remote.revision,pending,conflict:null};return next;
+      next.sync={...metadata,base:remote.state,revision:remote.revision,pending,conflict:null};return next;
     });
     if (conflict) throw new Error('两端修改有冲突，两个版本均已保留');
     if (pending) await deliver(adapter,pending);
-    await adapter.mutate(current=>{ current.sync={...current.sync,lastSyncedAt:new Date().toISOString()};return current; });
+    await adapter.mutate(current=>{ current.sync={...current.sync,lastSyncedAt:new Date().toISOString(),lastError:'',lastResult:{received,revision:current.sync.revision}};return current; });
+    return {received,...status(await adapter.read())};
   }
   async function deliver(adapter,pending) {
     const response=await adapter.request('push',pending);
@@ -56,5 +66,5 @@
     else if (choice!=='local') throw new Error('请选择冲突处理方式');
     state.sync={base:remote.state,revision:remote.revision,pending:null,conflict:null,recovery:backup};return F.applyPortable(state,F.portable(state));
   }
-  return {sync,resolve};
+  return {sync,resolve,status,INTERVAL_MS};
 });

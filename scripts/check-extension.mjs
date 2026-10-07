@@ -83,5 +83,7 @@ for (const file of ['README.md', 'THIRD_PARTY_NOTICES.md', 'CHANGELOG.md', ...(a
     try { await readFile(resolve(root, dirname(file), target)); } catch { errors.push(`Broken document link: ${file} -> ${target}`); }
   }
 }
+const flomoHashes=JSON.parse(await read('docs/flomo-contract.json'));
+for(const [file,hash] of Object.entries(flomoHashes.files))assert(createHash('sha256').update((await read('shared/'+file)).replace(/\r\n?/g,'\n')).digest('hex')===hash,`flomo contract drift: ${file}`);
 if (errors.length) { console.error(errors.join('\n')); process.exitCode = 1; }
 else console.log(`PASS: ${syntaxCount} JS syntax checks, ${referenceCount} local references, canonical copies, identity/configuration/font integrity and document links.`);

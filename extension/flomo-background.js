@@ -3,6 +3,19 @@ const flomoContract=globalThis.InnerGardenFlomo;
 const flomoEngine=globalThis.InnerGardenFlomoSync;
 let flomoWrites=Promise.resolve(),flomoNetwork=null;
 const flomoKey=owner=>'innerGardenFlomo:'+ (owner||'local');
+const FLOMO_SELECTION_KEY='innerGardenFlomoSelection';
+async function flomoSelection() {
+ const account=backgroundSyncClient.getPublicState();
+ const accountId=account.loggedIn ? account.accountId : '';
+ const stored=await chrome.storage.local.get([FLOMO_SELECTION_KEY,'innerGardenFlomoSyncAccounts',flomoKey(accountId)]);
+ const enabled=Boolean(accountId && ((stored.innerGardenFlomoSyncAccounts||{})[accountId] || stored[flomoKey(accountId)]));
+ let selection=stored[FLOMO_SELECTION_KEY];
+ if(!selection || selection.accountId!==accountId) {
+  selection={accountId,owner:enabled?accountId:''};
+  await chrome.storage.local.set({[FLOMO_SELECTION_KEY]:selection});
+ }
+ return selection;
+}
 function flomoWrite(fn){const result=flomoWrites.then(fn);flomoWrites=result.catch(()=>{});return result;}
 async function flomoRead(owner){const key=flomoKey(owner),stored=(await chrome.storage.local.get(key))[key];if(stored && (stored.version!==1 || !Array.isArray(stored.notes) || !Array.isArray(stored.tags)))throw new Error('笔记库无法读取，请保留本机数据');return stored || flomoContract.empty();}
 async function flomoSave(owner,state,notify=true){await chrome.storage.local.set({[flomoKey(owner)]:state});if(notify)chrome.runtime.sendMessage({channel:'inner-garden-flomo-changed',owner}).catch(()=>{});return state;}
@@ -13,16 +26,19 @@ async function flomoSync(owner){
  const auth=await flomoAuth();if(auth.accountId!==owner)throw new Error('请打开当前登录账号的笔记库');
  const base=String((globalThis.TAB_OUT_SYNC_CONFIG||{}).flomoApiBaseUrl||'').replace(/\/+$/,'');if(!base)throw new Error('flomo 云端接口尚未配置，笔记已保存在本机');
  const guard=()=>{if(backgroundSyncClient.getPublicState().accountId!==owner)throw new Error('账号已切换，同步已暂停');};
- await flomoEngine.sync({read:()=>flomoRead(owner),mutate:fn=>flomoWrite(async()=>{guard();return flomoSave(owner,fn(await flomoRead(owner)));}),request:(action,data)=>globalThis.InnerGardenFlomoTransport.exchange(async(part,value)=>{guard();const response=await fetch(base+'/'+part,{method:'POST',headers:{Authorization:'Bearer '+auth.accessToken,'Content-Type':'application/json'},body:JSON.stringify(value)});const result=await response.json();guard();if(!response.ok)throw new Error(result.message || 'flomo 同步失败');return result;},action,data)});
+ try { await flomoEngine.sync({read:()=>flomoRead(owner),mutate:fn=>flomoWrite(async()=>{guard();return flomoSave(owner,fn(await flomoRead(owner)));}),request:(action,data)=>globalThis.InnerGardenFlomoTransport.exchange(async(part,value)=>{guard();const response=await fetch(base+'/'+part,{method:'POST',headers:{Authorization:'Bearer '+auth.accessToken,'Content-Type':'application/json'},body:JSON.stringify(value)});const result=await response.json();guard();if(!response.ok)throw new Error(result.message || 'flomo 同步失败');return result;},action,data)}); } catch(error) {
+  await flomoWrite(async()=>{guard();const state=await flomoRead(owner);state.sync={...state.sync,lastError:error.message};await flomoSave(owner,state);}).catch(()=>{});throw error;
+ }
  })().finally(()=>{flomoNetwork=null;});return flomoNetwork;
 }
 async function flomoHandle(message){
  const owner=String(message.owner||''),method=message.method;
  if(method==='read')return flomoWrite(async()=>{const state=await flomoRead(owner);if(globalThis.InnerGardenPromptSeed?.apply(state,flomoContract))await flomoSave(owner,state,false);return state;});
- if(method==='status'){await (workspaceReady ||= initializeBackgroundWorkspace());const account=backgroundSyncClient.getPublicState();return {loggedIn:Boolean(account.loggedIn),accountId:account.accountId||'',username:account.username||'',configured:Boolean((globalThis.TAB_OUT_SYNC_CONFIG||{}).flomoApiBaseUrl),localCount:(await flomoRead('')).notes.length};}
+ if(method==='status'){await (workspaceReady ||= initializeBackgroundWorkspace());if(workspaceAccountTransition)await workspaceAccountTransition;const account=backgroundSyncClient.getPublicState(),selection=await flomoWrite(flomoSelection);return {loggedIn:Boolean(account.loggedIn),accountId:account.accountId||'',username:account.username||'',selectedOwner:selection.owner,configured:Boolean((globalThis.TAB_OUT_SYNC_CONFIG||{}).flomoApiBaseUrl),localCount:(await flomoRead('')).notes.length};}
+ if(method==='local')return flomoWrite(async()=>{const account=backgroundSyncClient.getPublicState();await chrome.storage.local.set({[FLOMO_SELECTION_KEY]:{accountId:account.loggedIn?account.accountId:'',owner:''}});chrome.runtime.sendMessage({channel:'inner-garden-flomo-library'}).catch(()=>{});return flomoRead('');});
  if(method==='sync'){await flomoSync(owner);return flomoRead(owner);}
  if(method==='account'){
- const auth=await flomoAuth();return flomoWrite(async()=>{let state=await flomoRead(auth.accountId);if(message.copy && owner!==auth.accountId){const source=await flomoRead(owner);state=flomoContract.mergeImport(state,flomoContract.portable(source)).state;const signature=(note,tags)=>JSON.stringify([note.body,note.createdAt,note.deletedAt||null,Boolean(note.pinned),note.tagIds.map(id=>flomoContract.tagPath(id,tags).toLowerCase()).sort()]);const targets=new Map(state.notes.map(note=>[signature(note,state.tags),note]));for(const original of source.notes){const note=targets.get(signature(original,source.tags));if(note)note.images=[...new Set([...(note.images||[]),...(original.images||[])])];}state.copyBackup={version:1,notes:source.notes,tags:source.tags};await flomoSave(auth.accountId,state);}return {owner:auth.accountId,state};});
+ const auth=await flomoAuth();return flomoWrite(async()=>{if(backgroundSyncClient.getPublicState().accountId!==auth.accountId)throw new Error('账号已切换');let state=await flomoRead(auth.accountId);if(message.copy && owner!==auth.accountId){const source=await flomoRead('');state=flomoContract.mergeImport(state,flomoContract.portable(source)).state;const signature=(note,tags)=>JSON.stringify([note.body,note.createdAt,note.deletedAt||null,Boolean(note.pinned),note.tagIds.map(id=>flomoContract.tagPath(id,tags).toLowerCase()).sort()]);const targets=new Map(state.notes.map(note=>[signature(note,state.tags),note]));for(const original of source.notes){const note=targets.get(signature(original,source.tags));if(note)note.images=[...new Set([...(note.images||[]),...(original.images||[])])];}state.copyBackup={version:1,notes:source.notes,tags:source.tags};await flomoSave(auth.accountId,state);}const accounts=(await chrome.storage.local.get('innerGardenFlomoSyncAccounts')).innerGardenFlomoSyncAccounts||{};await chrome.storage.local.set({innerGardenFlomoSyncAccounts:{...accounts,[auth.accountId]:true},[FLOMO_SELECTION_KEY]:{accountId:auth.accountId,owner:auth.accountId}});chrome.runtime.sendMessage({channel:'inner-garden-flomo-library'}).catch(()=>{});return {owner:auth.accountId,state};});
  }
  return flomoWrite(async()=>{
  let state=await flomoRead(owner),stamp=new Date().toISOString();

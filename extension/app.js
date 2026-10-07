@@ -902,6 +902,7 @@ function switchWorkspaceTab(tab, { remember = true, restoreScroll = true, focusT
     try { localStorage.setItem(WORKSPACE_TAB_STORAGE_KEY, tab); } catch (_) { /* preference is optional */ }
   }
   if (focusTab) bar.querySelector(`[data-workspace-tab="${tab}"]`)?.focus();
+  if (tab === 'flomo' && workspaceSyncMode === 'auto' && workspaceSyncClient) performWorkspaceSync(true,'automatic');
   if (tab === 'calendar') requestAnimationFrame(() => renderWeekCalendar());
   if (restoreScroll) requestAnimationFrame(() => window.scrollTo(0, barTop + workspaceTabScrollOffsets[tab]));
 }
@@ -2669,19 +2670,21 @@ async function performWorkspaceSync(silent = false, reason = silent ? 'automatic
     await flushWeeklyWorkspaceSave();
     const result = await workspaceSyncClient.sync(reason);
     if (result?.skipped) return true;
+    const scopeResults = result.scopes || {};
+    const scopeMessage = Object.entries(scopeResults).map(([key,value]) => (key === 'flomo' ? 'flomo' : '日程') + '：' + (value.error || (value.conflict ? '有冲突待确认' : value.dirty ? '有修改待同步' : '已交换数据')) + (key === 'flomo' && value.ok ? ' · 接收 '+value.received+' 条新增或更新' : '')).join(' · ');
     if (!silent) {
       const summary = result.summary || {};
       const message = result.state.conflicts
         ? `同步完成 · 有 ${result.state.conflicts} 项冲突需要确认`
         : `同步完成 · 已上传 ${summary.uploaded || 0} 项 · 已接收 ${summary.downloaded || 0} 项 · 待同步 ${result.state.queued || 0} 项`;
-      showToast(message, 4500);
+      showToast(scopeMessage || message, 4500);
     }
     workspaceSyncFailureCount = 0;
     if (document.getElementById('workspaceSyncDialog')?.open) {
       renderWorkspaceSyncDialog();
       renderWorkspaceSyncStatus({ status: result.state.conflicts ? 'conflict' : 'synced' });
     }
-    return true;
+    return !Object.values(scopeResults).some(value => value.error);
   } catch (error) {
     workspaceSyncFailureCount = Math.min(workspaceSyncFailureCount + 1, 8);
     const syncErrorDetail = /[\u3400-\u9fff]/u.test(String(error.message || ''))
@@ -3368,7 +3371,7 @@ function renderSignedInAccount(state) {
         <button class="sync-auth-method${workspaceSyncMode === 'auto' ? ' is-active' : ''}" type="button" data-action="set-workspace-sync-mode" data-mode="auto" aria-pressed="${workspaceSyncMode === 'auto'}">自动同步</button>
         <button class="sync-auth-method${workspaceSyncMode === 'manual' ? ' is-active' : ''}" type="button" data-action="set-workspace-sync-mode" data-mode="manual" aria-pressed="${workspaceSyncMode === 'manual'}">手动同步</button>
       </div>
-      <p class="sync-dialog-note">日程同步包含全部日期的日历、周计划和日课。自动模式在插件页面可见时约每 12 分钟检查；本地编辑立即保存。手动模式由“立即同步”触发，登录和切换账号也会尝试首次同步。flomo 需要单独开启与同步，图片和草稿留在本机。</p>
+      <p class="sync-dialog-note">账号同步包含日历、周计划、日课和已开启的 flomo 账号笔记。自动模式在插件页面可见时约每 12 分钟检查；本地编辑立即保存。立即同步会分别显示日程与 flomo 的结果，图片和草稿留在本机。</p>
       <button class="sync-button" type="button" data-action="download-sync-backup">下载首次同步前的备份</button>
       ${conflicts.length ? `<div class="sync-conflict-list">${conflicts.map(conflict => `
         <div class="sync-conflict-card">
