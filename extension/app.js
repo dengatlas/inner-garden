@@ -833,9 +833,9 @@ const WORKSPACE_SYNC_MODE_KEY = 'innerGardenWorkspaceSyncMode';
 const WORKSPACE_EXPORT_VERSION = 1;
 const WEEKLY_WORKSPACE_SCHEMA_VERSION = 3;
 const PLANNER_START_HOUR = 0;
-const PLANNER_EARLY_HOURS_END = 7;
+const PLANNER_EARLY_HOURS_END = 6;
 const PLANNER_END_HOUR = 23;
-const PLANNER_ROW_HEIGHT = 81;
+const PLANNER_ROW_HEIGHT = 192;
 const PLANNER_TIME_COLUMN_WIDTH = 128;
 const PLANNER_MINUTE_STEP = 15;
 const PLANNER_MIN_EVENT_MINUTES = 15;
@@ -1045,7 +1045,7 @@ function getWeekEventContentPreview(content) {
     .join('\n');
 }
 
-const WEEK_EVENT_SUMMARY_RESERVED_HEIGHT = 39;
+const WEEK_EVENT_SUMMARY_RESERVED_HEIGHT = 30;
 const WEEK_EVENT_SUMMARY_LINE_HEIGHT = 12.5;
 
 function getWeekEventSummaryLineCount(eventHeight) {
@@ -1054,6 +1054,22 @@ function getWeekEventSummaryLineCount(eventHeight) {
     Math.floor((eventHeight - WEEK_EVENT_SUMMARY_RESERVED_HEIGHT) / WEEK_EVENT_SUMMARY_LINE_HEIGHT)
   );
 }
+
+function updateWeekEventSummarySpace(eventEl) {
+  const main = eventEl.querySelector('.week-event-main');
+  const header = eventEl.querySelector('.week-event-header');
+  if (!main?.clientHeight || !header) return;
+  const style = getComputedStyle(main);
+  const available = main.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom) - header.offsetHeight - 5;
+  const lines = Math.max(0, Math.floor(available / WEEK_EVENT_SUMMARY_LINE_HEIGHT));
+  eventEl.style.setProperty('--week-event-summary-lines', lines);
+  eventEl.classList.toggle('has-no-summary-space', lines === 0);
+}
+
+// Recalculate after wrapping, font loading, tab switches or viewport changes.
+const weekEventSummaryObserver = new ResizeObserver(entries => {
+  for (const { target } of entries) updateWeekEventSummarySpace(target.closest('.week-event'));
+});
 
 function normalizeWeekEvent(event) {
   const displayStart = PLANNER_START_HOUR * 60;
@@ -1792,12 +1808,17 @@ function renderWeekCalendar() {
   const calendarEl = document.getElementById('weekCalendar');
   const rangeEl = document.getElementById('weekRangeLabel');
   if (!calendarEl) return;
+  weekEventSummaryObserver.disconnect();
+  calendarEl.classList.toggle('has-early-hours', plannerEarlyHoursExpanded);
+  calendarEl.style.setProperty('--planner-row-height', `${PLANNER_ROW_HEIGHT}px`);
+  calendarEl.style.setProperty('--planner-day-height', `${(PLANNER_END_HOUR - PLANNER_EARLY_HOURS_END + 1) * PLANNER_ROW_HEIGHT}px`);
   const previousBodyEl = calendarEl.querySelector('.week-grid-body');
   const previousScrollTop = previousBodyEl ? previousBodyEl.scrollTop : null;
 
   const weekDates = getSelectedWeekDates();
   const todayKey = getShanghaiTodayKey();
   const visibleStartHour = plannerEarlyHoursExpanded ? PLANNER_START_HOUR : PLANNER_EARLY_HOURS_END;
+  calendarEl.style.setProperty('--planner-grid-height', `${(PLANNER_END_HOUR - visibleStartHour + 1) * PLANNER_ROW_HEIGHT}px`);
   const earlyEventCount = weeklyWorkspaceState.events.filter(event => (
     weekDates.some(day => day.key === event.dateKey) &&
     event.startMinute < PLANNER_EARLY_HOURS_END * 60 &&
@@ -1819,7 +1840,7 @@ function renderWeekCalendar() {
 
   const earlyHoursToggleHtml = `
     <button class="early-hours-toggle${plannerEarlyHoursExpanded ? ' is-expanded' : ''}" type="button" data-action="toggle-early-hours" aria-expanded="${plannerEarlyHoursExpanded}" aria-controls="weekGridBody">
-      <span class="early-hours-time">00:00–07:00</span>
+      <span class="early-hours-time">00:00–${pad2(PLANNER_EARLY_HOURS_END)}:00</span>
       <span class="early-hours-toggle-copy">
         <span class="early-hours-rule" aria-hidden="true"></span>
         <span>${plannerEarlyHoursExpanded ? 'Hide early hours' : 'Show early hours'}</span>
@@ -1848,6 +1869,7 @@ function renderWeekCalendar() {
     ${earlyHoursToggleHtml}
     <div class="week-grid-body" id="weekGridBody">
       ${rowsHtml}
+      <div class="week-time-end">24:00</div>
       <div class="week-events-layer" id="weekEventsLayer">
         ${renderWeekEvents(weekDates)}
       </div>
@@ -1860,6 +1882,10 @@ function renderWeekCalendar() {
     calendarEl.style.setProperty('--week-scrollbar-width', scrollbarWidth);
     calendarEl.closest('.weekly-workspace')?.style.setProperty('--week-scrollbar-width', scrollbarWidth);
   }
+  calendarEl.querySelectorAll('.week-event').forEach(eventEl => {
+    updateWeekEventSummarySpace(eventEl);
+    weekEventSummaryObserver.observe(eventEl.querySelector('.week-event-header'));
+  });
   updateWeekTimeLine();
   renderYearArchive();
 }
@@ -1959,8 +1985,10 @@ function renderWeekEvents(weekDates) {
           <div class="week-resize-handle top" data-event-id="${escapeAttr(event.id)}" data-edge="top"></div>
           <button class="week-event-delete" data-action="delete-week-event" data-event-id="${escapeAttr(event.id)}" title="Delete" aria-label="Delete ${escapeAttr(event.title || DEFAULT_WEEK_EVENT_TITLE)}"></button>
           <div class="week-event-main">
-            <div class="week-event-title">${escapeHtml(event.title || DEFAULT_WEEK_EVENT_TITLE)}</div>
-            <div class="week-event-time">${formatPlannerRange(event)}</div>
+            <div class="week-event-header">
+              <div class="week-event-time">${formatPlannerRange(event)}</div>
+              <div class="week-event-title">${escapeHtml(event.title || DEFAULT_WEEK_EVENT_TITLE)}</div>
+            </div>
             ${contentPreviewHtml}
           </div>
           <button class="week-event-expand" data-action="open-week-entry-editor" data-event-id="${escapeAttr(event.id)}" title="Expand editor" aria-label="Expand ${escapeAttr(event.title || DEFAULT_WEEK_EVENT_TITLE)}">
@@ -4142,6 +4170,7 @@ function updateWeekEventElement(event) {
 
   const timeEl = eventEl.querySelector('.week-event-time');
   if (timeEl) timeEl.textContent = formatPlannerRange(event);
+  updateWeekEventSummarySpace(eventEl);
   eventEl.setAttribute('aria-label', `${event.title} ${formatPlannerRange(event)}`);
 
   const overlay = document.getElementById('weekEntryEditor');

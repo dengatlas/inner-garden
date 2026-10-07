@@ -1882,6 +1882,14 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   border-radius: 8px;
   background: rgba(255, 253, 249, 0.66);
   overflow: hidden;
+  overflow-x: auto;
+}
+
+/* Keep a two-column block wide enough for its title and unbroken time range. */
+.week-grid-head,
+.early-hours-toggle,
+.week-grid-body {
+  min-width: 1740px;
 }
 
 .week-grid-head,
@@ -2020,12 +2028,17 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 
 .week-grid-body {
   position: relative;
-  height: clamp(560px, 72vh, 840px);
+  height: auto;
+  overflow: visible;
+}
+
+.week-calendar.has-early-hours .week-grid-body {
+  height: var(--planner-day-height);
   overflow-y: auto;
 }
 
 .week-grid-row {
-  min-height: 81px;
+  height: var(--planner-row-height);
 }
 
 .week-time-cell {
@@ -2041,13 +2054,24 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 
 .week-hour-cell {
   position: relative;
-  min-height: 81px;
   border-right: 1px solid rgba(154, 145, 138, 0.12);
   border-bottom: 1px solid rgba(154, 145, 138, 0.14);
 }
 
 .week-hour-cell:nth-child(8) {
   border-right: none;
+}
+
+.week-time-end {
+  position: absolute;
+  top: calc(var(--planner-grid-height) - 14px);
+  width: var(--planner-side-column-width);
+  padding-right: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
 }
 
 .week-events-layer {
@@ -2118,28 +2142,36 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 5px 24px 4px 14px;
+  padding: 5px 6px 4px 14px;
+  overflow: hidden;
+}
+
+.week-event-header {
+  display: flow-root;
+  flex-shrink: 0;
+  max-height: 100%;
   overflow: hidden;
 }
 
 .week-event-title {
   flex-shrink: 0;
-  overflow: hidden;
   color: inherit;
   font-size: 12px;
   font-weight: 700;
   line-height: 1.15;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .week-event-time {
+  float: right;
+  margin-left: 4px;
   flex-shrink: 0;
-  margin-top: 1px;
+  white-space: nowrap;
   color: inherit;
   font-size: 9px;
   font-weight: 500;
-  line-height: 1;
+  line-height: 13.8px;
   opacity: 0.68;
   font-variant-numeric: tabular-nums;
 }
@@ -2167,7 +2199,7 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 
 .week-event-expand {
   position: absolute;
-  top: 5px;
+  bottom: 5px;
   right: 5px;
   width: 20px;
   height: 20px;
@@ -3558,9 +3590,6 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
     margin-left: 0;
     transform: none;
   }
-  .week-grid-body {
-    height: 560px;
-  }
   .week-calendar {
     overflow-x: auto;
   }
@@ -3569,14 +3598,6 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
     scrollbar-width: thin;
     min-width: 0;
     width: 100%;
-  }
-  .week-grid-head,
-  .week-grid-row,
-  .early-hours-toggle {
-    min-width: 820px;
-  }
-  .week-events-layer {
-    min-width: 820px;
   }
   .year-archive-header {
     flex-direction: column;
