@@ -135,7 +135,7 @@ async function controlWorkspace(message) {
     catch (error) { scopes.workspace = { error: error.message }; result = { state: backgroundSyncClient.getPublicState() }; }
     // Independent engines share a trigger, never data or failure handling.
     const selection = await flomoWrite(flomoSelection);
-    if (selection.owner && selection.accountId === accountId && (globalThis.TAB_OUT_SYNC_CONFIG||{}).flomoApiBaseUrl) {
+    if (selection.syncEnabled && selection.accountId === accountId && (globalThis.TAB_OUT_SYNC_CONFIG||{}).flomoApiBaseUrl) {
       try { await flomoSync(accountId);const notes=await flomoRead(accountId);scopes.flomo = { ok: true, ...flomoEngine.status(notes), received:notes.sync?.lastResult?.received || 0 }; }
       catch (error) { scopes.flomo = { error: error.message }; }
     }

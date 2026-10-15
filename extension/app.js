@@ -2680,10 +2680,10 @@ async function performWorkspaceSync(silent = false, reason = silent ? 'automatic
       showToast(scopeMessage || message, 4500);
     }
     workspaceSyncFailureCount = 0;
-    if (document.getElementById('workspaceSyncDialog')?.open) {
-      renderWorkspaceSyncDialog();
-      renderWorkspaceSyncStatus({ status: result.state.conflicts ? 'conflict' : 'synced' });
-    }
+    const workspaceResult = scopeResults.workspace;
+    renderWorkspaceSyncStatus({ status: workspaceResult?.error ? 'error' : workspaceResult?.conflict ? 'conflict' : workspaceResult?.dirty ? 'pending' : 'synced', detail: workspaceResult?.error || '' });
+    window.dispatchEvent(new CustomEvent('inner-garden-sync-result', { detail: { accountId: state.accountId, scopes: scopeResults } }));
+    if (document.getElementById('workspaceSyncDialog')?.open) renderWorkspaceSyncDialog();
     return !Object.values(scopeResults).some(value => value.error);
   } catch (error) {
     workspaceSyncFailureCount = Math.min(workspaceSyncFailureCount + 1, 8);

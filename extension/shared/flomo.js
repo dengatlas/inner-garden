@@ -142,7 +142,19 @@ function pinnedTree(tags,collapsed=new Set(),query='') {
     }
     return {state:scrubPurged(next),added,duplicates,conflicts};
   }
-  const equal = (a,b) => JSON.stringify(a)===JSON.stringify(b);
+  // Chrome storage may reorder object keys. Collections and tag membership have
+  // identity, not presentation order; authored text remains byte-for-byte significant.
+  function canonical(value, key='') {
+    if (Array.isArray(value)) {
+      const items=value.map(item=>canonical(item));
+      if (['notes','tags'].includes(key)) items.sort((a,b)=>a.id.localeCompare(b.id));
+      if (['tagIds','inlineTagIds'].includes(key)) items.sort();
+      return items;
+    }
+    if (value && typeof value==='object') return Object.fromEntries(Object.keys(value).sort().map(name=>[name,canonical(value[name],name)]));
+    return value;
+  }
+  const equal = (a,b) => JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
   function rebase(base, local, remote) {
     const result = {version:1,notes:[],tags:[]}, conflicts=[];
     for (const kind of ['notes','tags']) {
@@ -153,6 +165,7 @@ function pinnedTree(tags,collapsed=new Set(),query='') {
         if (deleted) value=tombstone(deleted);
         else if (equal(l.get(key),b.get(key))) value=r.get(key);
         else if (equal(r.get(key),b.get(key)) || equal(l.get(key),r.get(key))) value=l.get(key);
+        else if(l.get(key)&&r.get(key)&&equal({...l.get(key),updatedAt:''},{...r.get(key),updatedAt:''})) value=l.get(key).updatedAt>r.get(key).updatedAt?l.get(key):r.get(key);
         else { conflicts.push({kind,id:key,local:l.get(key)||null,remote:r.get(key)||null}); value=l.get(key); }
         if (value) result[kind].push(value);
       }

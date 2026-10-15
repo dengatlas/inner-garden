@@ -1,7 +1,7 @@
 export const runtimeFiles = Object.freeze([
   'manifest.json', 'index.html', 'app.js', 'style.css', 'background.js',
   'config.js', 'config.example.js', 'config-finalize.js', 'page-bootstrap.js',
-  'workspace-background.js', 'flomo-background.js', 'flomo-channel.js',
+  'workspace-background.js', 'flomo-history.js', 'flomo-background.js', 'flomo-channel.js',
   'flomo-editor-tools.js', 'flomo.js', 'flomo.css', 'local-favicon.js',
   'migration.html', 'migration.css', 'migration.js', 'device-login.js', 'vendor/qrcodegen.js',
   'icons/icon.svg', 'icons/icon16.png', 'icons/icon48.png', 'icons/icon128.png',

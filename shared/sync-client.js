@@ -93,6 +93,7 @@
       }
       const activeStoredState = this.auth ? this.accountStates.states[this.auth.accountId] : null;
       this.state = { ...contract.clone(DEFAULT_STATE), ...(activeStoredState || storedState || {}) };
+      if (activeSession && !this.auth) this.state.authRequired = true;
       this.state.deviceId ||= contract.createId('device');
       this.state.versions ||= {};
       this.state.baseline ||= {};
@@ -131,6 +132,8 @@
         configured: Boolean(this.config.apiBaseUrl && this.config.authBaseUrl),
         loggedIn: Boolean(this.auth?.refreshToken || this.auth?.accessToken),
         accountId: this.auth?.accountId || '',
+        authRequired: Boolean(this.state?.authRequired),
+        cachedAccountId: this.accounts?.lastAccountId || '',
         username: this.auth?.username || '',
         userId: this.auth?.userId || '',
         signedInAt: this.auth?.signedInAt || '',
@@ -593,6 +596,7 @@
         };
         this.state.deviceId ||= deviceId || contract.createId('device');
       }
+      this.state.authRequired = false;
       this.state.lastUsername = username;
       this.state.firstBackupLocked = true;
       await this.save();
@@ -660,6 +664,7 @@
       }
       this.accounts.activeAccountId = '';
       this.auth = null;
+      this.state.authRequired = false;
       await this.save();
       this.emitStatus('signed-out');
     }
@@ -671,12 +676,19 @@
         this.auth = null;
         this.accounts.activeAccountId = '';
         await this.save();
-        throw new Error('Your trusted session expired. Sign in again.');
+        this.state.authRequired = true;
+        await this.save();
+        this.emitStatus('auth-required');
+        throw new Error('登录已过期，请重新登录；本机笔记已保留');
       }
       if (this.auth.accessToken && Number(this.auth.expiresAt || 0) > this.now() + 60000) {
         return this.auth.accessToken;
       }
-      if (!this.auth.refreshToken) throw new Error('Your session expired. Sign in again.');
+      if (!this.auth.refreshToken) {
+        expireSession(this.auth);this.auth = null;this.accounts.activeAccountId = '';this.state.authRequired = true;
+        await this.save();this.emitStatus('auth-required');throw new Error('登录已失效，请重新登录；本机内容已保留');
+      }
+      const refreshingSession = this.auth;
       const response = await this.fetch(`${stripSlash(this.config.authBaseUrl)}/auth/v1/token`, {
         method: 'POST',
         headers: {
@@ -690,13 +702,23 @@
         }),
       });
       const data = await readJson(response);
+      if (this.auth !== refreshingSession) throw new Error('账号已切换，本次令牌刷新已取消');
       if (!response.ok || !data.access_token) {
-        const expiredAccountId = this.auth.accountId;
-        expireSession(this.accounts.sessions[expiredAccountId]);
-        this.auth = null;
-        this.accounts.activeAccountId = '';
-        await this.save();
-        throw new Error(getErrorMessage(data, 'Your session expired. Sign in again.'));
+        const code = getAuthErrorCode(data, response.status).toLowerCase();
+        const expired = Number(response.status) < 500 && ['invalid_grant', 'invalid_refresh_token', 'refresh_token_expired', 'token_expired', 'session_expired'].includes(code);
+        if (expired) {
+          const expiredAccountId = this.auth.accountId;
+          expireSession(this.accounts.sessions[expiredAccountId]);
+          this.auth = null;
+          this.accounts.activeAccountId = '';
+          this.state.authRequired = true;
+          await this.save();
+          this.emitStatus('auth-required');
+        }
+        const error = new Error(expired ? '登录已失效，请重新登录；本机内容已保留' : getErrorMessage(data, '账号服务暂时不可用，请稍后重试；本机内容已保留'));
+        error.retryable = !expired;
+        error.syncErrorType = expired ? 'auth-required' : 'connection';
+        throw error;
       }
       this.auth.accessToken = data.access_token;
       this.auth.refreshToken = data.refresh_token || this.auth.refreshToken;

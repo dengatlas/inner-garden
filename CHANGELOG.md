@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.2 — flomo 同步修复
+
+- 修复保存后误报待同步、单端修改误报冲突和临时认证故障导致退出账号。
+- 首次加入账号后直接同步；真实差异逐条展示，其他笔记继续交换。
+- 增加本机备份历史、归档预览与合并恢复，正常状态隐藏插件连接恢复入口。
+- 更新插件后仍需更新小程序预览，两端真实账号验收另行记录。
+
+
 ## 1.2.1 — Phone authorization candidate
 
 - Let the current Mini Program account authorize a separate desktop session through CloudBase OAuth device flow; keep credentials in the extension worker.
