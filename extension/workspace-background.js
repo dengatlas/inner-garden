@@ -122,16 +122,25 @@ async function controlWorkspace(message) {
     if (automatic) await recordSyncAttempt();
     const scopes = {};
     let result;
-    try { result = await backgroundSyncClient.sync(backgroundWorkspace, {
-      getWorkspace: () => workspaceContract.clone(backgroundWorkspace),
+    const focusState=await focusRead(),focusEnabled=Boolean(accountId&&focusState.syncAccounts[accountId]);
+    // A local source record is never read from another account's focus cache.
+    const input=await focusWorkspace();
+    let liveFocus=input.focusSessions;
+    try { result = await backgroundSyncClient.sync(input, {
+      focusEnabled,
+      getWorkspace: () => ({...workspaceContract.clone(backgroundWorkspace),...(focusEnabled?{focusSessions:liveFocus}: {})}),
       applyWorkspace: next => {
         const base = workspaceContract.clone(backgroundWorkspace);
         return serializeWorkspaceWrite(async () => {
-          backgroundWorkspace = workspaceContract.rebaseWorkspace(base, backgroundWorkspace, next);
+          if(focusOwner()!==accountId)throw new Error('账号已切换，同步已暂停');
+          const withoutFocus=await focusApply(next,accountId);
+          backgroundWorkspace = workspaceContract.rebaseWorkspace(base, backgroundWorkspace, withoutFocus);
           await saveBackgroundWorkspace();
         });
       },
-    }); scopes.workspace = { ok: true, dirty:Boolean(result.state?.queued), conflict:Boolean(result.state?.conflicts) }; }
+    }); scopes.workspace = { ok: true, dirty:Boolean(result.state?.queued), conflict:Boolean(result.state?.conflicts) };
+      if(focusEnabled)scopes.focus=result.summary?.focusError?{error:result.summary.focusError}:{ok:true,dirty:Boolean(result.state?.focusQueued)};
+    }
     catch (error) { scopes.workspace = { error: error.message }; result = { state: backgroundSyncClient.getPublicState() }; }
     // Independent engines share a trigger, never data or failure handling.
     const selection = await flomoWrite(flomoSelection);

@@ -11,8 +11,9 @@
 
   function filterStorage(storage) {
     return Object.fromEntries(Object.entries(storage || {})
-      .filter(([key]) => !authStorageKey.test(key) && key !== 'innerGardenWorkspaceAutoSyncAttempts')
+      .filter(([key]) => !authStorageKey.test(key) && !['innerGardenWorkspaceAutoSyncAttempts', 'innerGardenFocusDeviceId'].includes(key))
       .map(([key, value]) => {
+        if (key === 'innerGardenFocusAccounts') return [key, { ...value, syncAccounts: {} }];
         if (syncStateKey.test(key)) return [key, { ...value, deviceId: '' }];
         if (accountStatesKey.test(key)) {
           const states = Object.fromEntries(Object.entries(value?.states || {}).map(([accountId, state]) => [accountId, { ...state, deviceId: '' }]));
@@ -48,15 +49,17 @@
   }
   function blankSyncState(value) {
     if (!value || typeof value !== 'object') return false;
-    const keys = new Set(['deviceId', 'cursor', 'versions', 'baseline', 'queue', 'conflicts', 'recoveryHistory', 'clockOffsetMs', 'lastSyncedAt', 'lastSyncSummary', 'lastUsername', 'seeded', 'firstBackup', 'firstBackupLocked']);
+    const keys = new Set(['deviceId', 'cursor', 'focusCursor', 'versions', 'baseline', 'queue', 'conflicts', 'recoveryHistory', 'clockOffsetMs', 'lastSyncedAt', 'lastSyncSummary', 'lastUsername', 'seeded', 'firstBackup', 'firstBackupLocked']);
     if (Object.keys(value).some(key => !keys.has(key))) return false;
     return ['queue', 'conflicts', 'recoveryHistory'].every(key => Array.isArray(value[key]) && !value[key].length)
-      && emptyObject(value.versions) && emptyObject(value.baseline) && value.cursor === 0
+      && emptyObject(value.versions) && emptyObject(value.baseline) && value.cursor === 0 && !value.focusCursor
       && !value.lastSyncedAt && !value.lastUsername && !value.lastSyncSummary && !value.firstBackupLocked
       && !value.clockOffsetMs && (!value.firstBackup || blankWorkspace(value.firstBackup));
   }
   function isPristineStorage(storage, defaultFlomoTags = []) {
     return Object.entries(storage || {}).every(([key, value]) => {
+      if (key === 'innerGardenFocusDeviceId') return typeof value === 'string' && value.startsWith('focus-device-');
+      if (key === 'innerGardenFlomoSelection') return value && value.accountId === '' && value.owner === '' && Object.keys(value).every(field => ['accountId','owner'].includes(field));
       if (key === 'weeklyWorkspace') return blankWorkspace(value);
       if (key === 'tabOutWorkspaceRevision') return Number.isSafeInteger(value) && value >= 0;
       if (key === 'tabOutWorkspaceOwner') return value === 'local';

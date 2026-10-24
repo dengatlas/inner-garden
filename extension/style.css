@@ -3624,3 +3624,16 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 .sync-account-uid { padding: 14px 0; }
 .sync-account-uid > span { display: block; margin-bottom: 6px; }
 .sync-account-uid code, .sync-device-account code { overflow-wrap: anywhere; user-select: text; }
+.focus-record-tools { display:flex; align-items:center; gap:12px; margin:-18px 0 28px; color:var(--text-secondary,#626b60); }
+.focus-record-tools input { flex:1; max-width:480px; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:transparent; color:inherit; font:inherit; }
+.focus-record-dialog { width:min(720px, calc(100vw - 48px)); max-height:82vh; overflow:auto; margin:auto; border:1px solid #ddd7ce; border-radius:18px; padding:28px; background:#faf7f2; color:#363d35; }
+.focus-record-dialog::backdrop { background:#20282066; }
+.focus-record-heading { display:flex; align-items:center; justify-content:space-between; gap:20px; }
+.focus-record-filters { display:flex; flex-wrap:wrap; gap:10px; margin:24px 0; }
+.focus-record-dialog button,.focus-record-dialog input[type=date] { padding:8px 12px; border:1px solid #d3d8cf; border-radius:8px; background:#fffdf8; color:inherit; font:inherit; cursor:pointer; }
+.focus-record-dialog button:disabled { opacity:.5; cursor:default; }
+.focus-record-dialog button[aria-pressed=true] { background:#587b62; border-color:#587b62; color:white; }
+.focus-record-row { padding:16px 0; border-top:1px solid #e3e0d8; }
+.focus-record-row p { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.7; margin:8px 0 0; }
+#focusRecordFeedback { color:#9c542c; }
+@media(max-width:600px) { .focus-record-tools { flex-wrap:wrap; } .focus-record-tools input { min-width:180px; } .focus-record-dialog { padding:20px; } }

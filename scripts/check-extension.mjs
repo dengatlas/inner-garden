@@ -8,6 +8,8 @@ import { runtimeFiles, documentFiles } from './extension-files.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const errors = [];
 const assert = (condition, message) => { if (!condition) errors.push(message); };
+const focusContract=JSON.parse(await readFile(resolve(root,'docs/focus-contract.json'),'utf8'));
+for(const [file,hash] of Object.entries(focusContract.files)){const content=(await readFile(resolve(root,'shared',file),'utf8')).replace(/\r\n?/g,'\n');assert(createHash('sha256').update(content).digest('hex')===hash,'Focus contract drift: '+file);}
 const read = file => readFile(resolve(root, file), 'utf8');
 const manifest = JSON.parse(await read('extension/manifest.json'));
 const policy = JSON.parse(await read('docs/decisions/public-edition.json'));

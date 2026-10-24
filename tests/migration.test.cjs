@@ -38,6 +38,26 @@ test('fresh initialized workspace and default flomo tags permit migration throug
   assert.equal((await worker.message({ channel: 'inner-garden-device-migration', method: 'import', payload: payload({}) })).ok, false);
 });
 
+test('opening focus and flomo status on a fresh device does not prevent its first migration', async () => {
+  const worker = workerHarness({}, { enabled: false });
+  await worker.request({ method: 'initialize' });
+  assert.ok((await worker.message({ channel:'inner-garden-focus-request', method:'read' })).ok);
+  assert.ok((await worker.message({ channel:'inner-garden-flomo-request', method:'status' })).ok);
+  const imported = await worker.message({channel:'inner-garden-device-migration',method:'import',payload:payload({deferredItems:[{id:'synthetic-focus-migration'}]})});
+  assert.equal(imported.ok,true,imported.error);
+  assert.equal(worker.data.deferredItems[0].id,'synthetic-focus-migration');
+});
+
+test('migration retains focus history and claims but resets device identity and its sync choices', () => {
+  const record={id:'kept-record',sourceDeviceId:'original-device'};
+  const restored=M.validatePayload(payload({innerGardenFocusDeviceId:'do-not-reuse',innerGardenFocusAccounts:{version:1,accounts:{'uid:a':[record]},guest:[],claims:{'kept-record':'uid:a'},syncAccounts:{'uid:a':true}}}));
+  assert.equal(restored.innerGardenFocusDeviceId,undefined);
+  assert.deepEqual(restored.innerGardenFocusAccounts.accounts['uid:a'],[record]);
+  assert.equal(restored.innerGardenFocusAccounts.claims['kept-record'],'uid:a');
+  assert.deepEqual(restored.innerGardenFocusAccounts.syncAccounts,{});
+  assert.equal(M.isPristineStorage({innerGardenFocusAccounts:restored.innerGardenFocusAccounts}),false);
+});
+
 test('saved content prevents migration without altering any stored value', async () => {
   const worker = workerHarness({}, { enabled: false });
   const initial = await worker.request({ method: 'initialize' });

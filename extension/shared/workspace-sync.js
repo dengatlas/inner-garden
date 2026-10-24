@@ -10,6 +10,7 @@
     EVENT: 'calendar_event',
     WEEK_PLAN_ITEM: 'week_plan_item',
     DAILY_LOG_FIELD: 'daily_log_field',
+    FOCUS_SESSION: 'focus_session',
   });
   const EVENT_COLORS = Object.freeze(['yellow', 'pink', 'blue', 'purple', 'white']);
   const DAILY_LOG_FIELDS = Object.freeze([
@@ -254,6 +255,12 @@
       }
     }
 
+    for (const record of Array.isArray(source.focusSessions) ? source.focusSessions : []) {
+      if (!record || !record.id) continue;
+      const payload = clone(record);
+      const entity = buildEntity(ENTITY_TYPES.FOCUS_SESSION, record.id, payload);
+      entities[entityKey(entity.type, entity.id)] = entity;
+    }
     return entities;
   }
 
@@ -282,6 +289,12 @@
     const payload = clone((change && change.payload) || {});
     const deleted = Boolean((change && change.deletedAt) || (change && change.action === 'delete'));
     if (!type || !id) return workspace;
+
+    if (type === ENTITY_TYPES.FOCUS_SESSION) {
+      workspace.focusSessions = (workspace.focusSessions || []).filter(record => record.id !== id);
+      if (!deleted) workspace.focusSessions.push({ ...payload, id });
+      return workspace;
+    }
 
     if (type === ENTITY_TYPES.EVENT) {
       workspace.events ||= [];

@@ -10,6 +10,7 @@
   const DEFAULT_STATE = Object.freeze({
     deviceId: '',
     cursor: 0,
+    focusCursor: 0,
     versions: {},
     baseline: {},
     queue: [],
@@ -54,6 +55,7 @@
       this.savePromise = Promise.resolve();
       this.latestWorkspace = null;
       this.syncProgress = null;
+      this.focusEnabled = false;
     }
 
     get enabled() {
@@ -142,6 +144,8 @@
         lastUsername: this.state?.lastUsername || '',
         deviceId: this.state?.deviceId || '',
         cursor: this.state?.cursor || 0,
+        focusCursor: this.state?.focusCursor || 0,
+        focusQueued: this.state?.queue?.filter(op => op.entityType === 'focus_session').length || 0,
         queued: this.state?.queue?.length || 0,
         conflicts: this.state?.conflicts?.length || 0,
         lastSyncedAt: this.state?.lastSyncedAt || '',
@@ -192,10 +196,12 @@
       this.latestWorkspace = contract.clone(workspace);
       if (!this.state.firstBackupLocked) this.state.firstBackup = contract.clone(workspace);
       const current = contract.workspaceToEntityMap(workspace);
+      const includeFocus = this.focusEnabled && Array.isArray(workspace.focusSessions);
       const previous = this.state.baseline || {};
       const keys = new Set([...Object.keys(previous), ...Object.keys(current)]);
 
       for (const key of keys) {
+        if (key.startsWith('focus_session::') && !includeFocus) continue;
         const before = previous[key];
         const after = current[key];
         let existingIndex = -1;
@@ -229,10 +235,16 @@
         else this.state.queue.push(operation);
       }
 
-      this.state.baseline = contract.clone(current);
+      this.state.baseline = this.preserveFocusBaseline(current, includeFocus);
       await this.save();
       this.emitStatus(navigatorOnLine() ? 'pending' : 'offline');
       return this.state.queue.length;
+    }
+
+    preserveFocusBaseline(current, includeFocus = this.focusEnabled) {
+      if (includeFocus) return contract.clone(current);
+      const kept = Object.fromEntries(Object.entries(this.state.baseline || {}).filter(([key]) => key.startsWith('focus_session::')));
+      return { ...contract.clone(current), ...kept };
     }
 
     async login(username, password) {
@@ -755,6 +767,7 @@
 
     async sync(workspace, options = {}) {
       if (this.syncPromise) return this.syncPromise;
+      this.focusEnabled = Boolean(options.focusEnabled);
       const input = contract.clone(workspace);
       this.syncPromise = (async () => {
         await this.captureWorkspace(input);
@@ -779,17 +792,27 @@
       }
 
       this.emitStatus('syncing');
-      this.syncProgress = { cursor: this.state.cursor, versions: contract.clone(this.state.versions) };
-      const scheduledIds = new Set(this.state.queue.map(operation => operation.opId));
+      this.syncProgress = { cursor: this.state.cursor, focusCursor: this.state.focusCursor || 0, versions: contract.clone(this.state.versions) };
+      let focusSupported = false, focusError = '';
+      if (this.focusEnabled) {
+        try { focusSupported = (await this.api('/status', { method: 'GET' })).supportedEntityTypes?.includes('focus_session') || false; }
+        catch (error) { focusError = error.message; }
+        if (!focusSupported) focusError ||= '云端尚未支持专注记录，本机记录已保留';
+      }
+      const scheduledIds = new Set(this.state.queue.filter(op => op.entityType !== 'focus_session' || focusSupported).map(operation => operation.opId));
       let workspace = contract.clone(workspaceInput);
       let changed = false;
-      const summary = { uploaded: 0, downloaded: 0, autoResolved: 0, conflicts: 0 };
+      const summary = { uploaded: 0, downloaded: 0, autoResolved: 0, conflicts: 0, ...(this.focusEnabled ? { focusError } : {}) };
       const pulledRevisions = new Set();
       const uploadedRevisions = new Set();
 
       const initialPull = await this.pullRemoteChanges(workspace, summary, true, pulledRevisions);
       workspace = initialPull.workspace;
       changed ||= initialPull.changed;
+      if (focusSupported) {
+        const focusPull = await this.pullRemoteChanges(workspace, summary, true, pulledRevisions, true, true);
+        workspace = focusPull.workspace; changed ||= focusPull.changed;
+      }
 
       while (this.state.queue.some(operation => scheduledIds.has(operation.opId))) {
         const batch = this.state.queue.filter(operation => scheduledIds.has(operation.opId) && !operation.dependsOnOpId).slice(0, 50);
@@ -860,6 +883,10 @@
       const confirmationPull = await this.pullRemoteChanges(workspace, summary, true, pulledRevisions, false);
       workspace = confirmationPull.workspace;
       changed ||= confirmationPull.changed;
+      if (focusSupported) {
+        const focusPull = await this.pullRemoteChanges(workspace, summary, true, pulledRevisions, false, true);
+        workspace = focusPull.workspace; changed ||= focusPull.changed;
+      }
       summary.downloaded += [...pulledRevisions]
         .filter(revision => !uploadedRevisions.has(revision)).length;
 
@@ -869,7 +896,7 @@
         captured = this.captureWorkspace(liveWorkspace);
         workspace = contract.rebaseWorkspace(workspaceInput, liveWorkspace, workspace);
       }
-      this.state.baseline = contract.workspaceToEntityMap(workspace);
+      this.state.baseline = this.preserveFocusBaseline(contract.workspaceToEntityMap(workspace));
       this.latestWorkspace = contract.clone(workspace);
       try {
         if (options.applyWorkspace) await options.applyWorkspace(workspace);
@@ -877,12 +904,13 @@
         // A failed disk write must not make an unapplied download the next baseline.
         // Retain edits captured during that write, without mistaking the download for them.
         this.latestWorkspace = contract.rebaseWorkspace(workspace, this.latestWorkspace, liveWorkspace || workspaceInput);
-        this.state.baseline = contract.workspaceToEntityMap(this.latestWorkspace);
+        this.state.baseline = this.preserveFocusBaseline(contract.workspaceToEntityMap(this.latestWorkspace));
         await captured;
         throw error;
       }
       await captured;
       this.state.cursor = this.syncProgress.cursor;
+      this.state.focusCursor = this.syncProgress.focusCursor;
       this.state.versions = this.syncProgress.versions;
       this.state.lastSyncedAt = this.nowIso();
       this.state.lastSyncSummary = summary;
@@ -891,7 +919,8 @@
       return { workspace, changed, summary, state: this.getPublicState() };
     }
 
-    async pullRemoteChanges(workspaceInput, summary, preserveQueued, pulledRevisions = new Set(), replaceInitialSeed = true) {
+    async pullRemoteChanges(workspaceInput, summary, preserveQueued, pulledRevisions = new Set(), replaceInitialSeed = true, focusOnly = false) {
+      const cursorKey = focusOnly ? 'focusCursor' : 'cursor';
       let workspace = workspaceInput;
       let changed = false;
       let hasMore = true;
@@ -899,7 +928,7 @@
       while (hasMore) {
         const result = await this.api('/pull', {
           method: 'POST',
-          body: JSON.stringify({ cursor: this.syncProgress.cursor, limit: 200 }),
+          body: JSON.stringify({ cursor: this.syncProgress[cursorKey], limit: 200, ...(focusOnly ? { entityTypes: ['focus_session'] } : {}) }),
         });
         for (const change of result.changes || []) {
           const key = contract.entityKey(change.entityType, change.entityId);
@@ -920,7 +949,7 @@
           workspace = contract.applyEntityChange(workspace, change);
           changed = true;
         }
-        this.syncProgress.cursor = Number(result.cursor ?? this.syncProgress.cursor);
+        this.syncProgress[cursorKey] = Number(result.cursor ?? this.syncProgress[cursorKey]);
         hasMore = Boolean(result.hasMore);
       }
       // Compare only after every page: an earlier matching revision may be

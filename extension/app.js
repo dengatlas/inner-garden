@@ -638,8 +638,13 @@ function formatFocusTime(ms) {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-async function saveFocusTimerState() {
-  await chrome.storage.local.set({ [FOCUS_TIMER_STORAGE_KEY]: focusTimerState });
+async function focusTimerRequest(action = 'read', data = {}) {
+  const response = await chrome.runtime.sendMessage({ channel:'inner-garden-focus-request', method:'timer', action, ...data });
+  if(!response?.ok) throw new Error(response?.error || '专注计时暂时无法保存');
+  focusTimerState=response.result.timer;
+  updateFocusTimerView();scheduleFocusTimerTick();
+  if(response.result.completed)window.dispatchEvent(new Event('inner-garden-focus-recorded'));
+  return response.result;
 }
 
 function updateFocusTimerView() {
@@ -691,135 +696,33 @@ function scheduleFocusTimerTick() {
 }
 
 async function completeFocusTimer() {
-  const finishedMode = focusTimerState.mode;
-  const nextMode = finishedMode === 'break' ? 'focus' : 'break';
-  const root = document.getElementById('focusTimer');
-
-  focusTimerState = {
-    mode: nextMode,
-    durationMs: getFocusDuration(nextMode),
-    remainingMs: getFocusDuration(nextMode),
-    isRunning: false,
-    startedAt: null,
-    customMinutes: focusTimerState.customMinutes || DEFAULT_CUSTOM_FOCUS_MINUTES,
-  };
-
-  await saveFocusTimerState();
-  scheduleFocusTimerTick();
-  updateFocusTimerView();
-
-  if (root) {
-    const rect = root.getBoundingClientRect();
-    shootConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2);
-  }
-
-  showToast(finishedMode === 'break' ? 'Break complete. Ready to focus.' : 'Focus session complete. Time for a break.');
+  const result=await focusTimerRequest();
+  if(result.completed)showToast(result.completedMode==='break'?'休息已结束':'本次专注已记录');
 }
 
 async function handleFocusTimerTick() {
-  if (!focusTimerState.isRunning) return;
-  if (getFocusRemainingMs() <= 0) {
-    await completeFocusTimer();
-    return;
-  }
-  updateFocusTimerView();
+  try{await focusTimerRequest();}catch(error){showToast(error.message);}
 }
 
 async function initFocusTimer() {
-  try {
-    const stored = await chrome.storage.local.get(FOCUS_TIMER_STORAGE_KEY);
-    focusTimerState = normalizeFocusTimerState(stored[FOCUS_TIMER_STORAGE_KEY]);
-
-    if (focusTimerState.isRunning && getFocusRemainingMs() <= 0) {
-      await completeFocusTimer();
-      return;
-    }
-  } catch {
-    focusTimerState = normalizeFocusTimerState(null);
-  }
-
-  updateFocusTimerView();
-  scheduleFocusTimerTick();
+  try{await focusTimerRequest();}catch(error){showToast(error.message);}
 }
 
 async function setFocusTimerMode(mode) {
-  if (!FOCUS_TIMER_DURATIONS[mode]) return;
-  focusTimerState = {
-    mode,
-    durationMs: getFocusDuration(mode),
-    remainingMs: getFocusDuration(mode),
-    isRunning: false,
-    startedAt: null,
-    customMinutes: focusTimerState.customMinutes || DEFAULT_CUSTOM_FOCUS_MINUTES,
-  };
-  await saveFocusTimerState();
-  scheduleFocusTimerTick();
-  updateFocusTimerView();
+  await focusTimerRequest('mode',{mode});
 }
 
 async function toggleFocusTimer() {
-  const remainingMs = getFocusRemainingMs();
-
-  if (focusTimerState.isRunning) {
-    focusTimerState = {
-      ...focusTimerState,
-      remainingMs,
-      isRunning: false,
-      startedAt: null,
-    };
-  } else {
-    focusTimerState = {
-      ...focusTimerState,
-      remainingMs: remainingMs > 0 ? remainingMs : focusTimerState.durationMs,
-      isRunning: true,
-      startedAt: Date.now(),
-    };
-  }
-
-  await saveFocusTimerState();
-  scheduleFocusTimerTick();
-  updateFocusTimerView();
+  if(!focusTimerState.sessionId)await focusTimerRequest('note',{note:document.getElementById('focusTaskNote')?.value||''});
+  await focusTimerRequest('toggle');
 }
 
 async function resetFocusTimer() {
-  const durationMs = focusTimerState.mode === 'custom'
-    ? (focusTimerState.customMinutes || DEFAULT_CUSTOM_FOCUS_MINUTES) * 60 * 1000
-    : getFocusDuration(focusTimerState.mode);
-
-  focusTimerState = {
-    mode: focusTimerState.mode,
-    durationMs,
-    remainingMs: durationMs,
-    isRunning: false,
-    startedAt: null,
-    customMinutes: focusTimerState.customMinutes || DEFAULT_CUSTOM_FOCUS_MINUTES,
-  };
-  await saveFocusTimerState();
-  scheduleFocusTimerTick();
-  updateFocusTimerView();
+  await focusTimerRequest('reset');
 }
 
 async function setCustomFocusDuration() {
-  const inputEl = document.getElementById('focusCustomMinutes');
-  const rawMinutes = Number(inputEl && inputEl.value);
-  const minutes = Number.isFinite(rawMinutes)
-    ? Math.min(Math.max(Math.round(rawMinutes), MIN_CUSTOM_FOCUS_MINUTES), MAX_CUSTOM_FOCUS_MINUTES)
-    : DEFAULT_CUSTOM_FOCUS_MINUTES;
-  const durationMs = minutes * 60 * 1000;
-
-  focusTimerState = {
-    mode: 'custom',
-    durationMs,
-    remainingMs: durationMs,
-    isRunning: false,
-    startedAt: null,
-    customMinutes: minutes,
-  };
-
-  await saveFocusTimerState();
-  scheduleFocusTimerTick();
-  updateFocusTimerView();
-  showToast(`Custom timer set to ${minutes} min`);
+  await focusTimerRequest('custom',{minutes:document.getElementById('focusCustomMinutes')?.value});
 }
 
 
@@ -2671,7 +2574,7 @@ async function performWorkspaceSync(silent = false, reason = silent ? 'automatic
     const result = await workspaceSyncClient.sync(reason);
     if (result?.skipped) return true;
     const scopeResults = result.scopes || {};
-    const scopeMessage = Object.entries(scopeResults).map(([key,value]) => (key === 'flomo' ? 'flomo' : '日程') + '：' + (value.error || (value.conflict ? '有冲突待确认' : value.dirty ? '有修改待同步' : '已交换数据')) + (key === 'flomo' && value.ok ? ' · 接收 '+value.received+' 条新增或更新' : '')).join(' · ');
+    const scopeMessage = Object.entries(scopeResults).map(([key,value]) => ({flomo:'flomo',focus:'专注',workspace:'日程'}[key] || key) + '：' + (value.error || (value.conflict ? '有冲突待确认' : value.dirty ? '有修改待同步' : '已交换数据')) + (key === 'flomo' && value.ok ? ' · 接收 '+value.received+' 条新增或更新' : '')).join(' · ');
     if (!silent) {
       const summary = result.summary || {};
       const message = result.state.conflicts
@@ -3371,7 +3274,7 @@ function renderSignedInAccount(state) {
         <button class="sync-auth-method${workspaceSyncMode === 'auto' ? ' is-active' : ''}" type="button" data-action="set-workspace-sync-mode" data-mode="auto" aria-pressed="${workspaceSyncMode === 'auto'}">自动同步</button>
         <button class="sync-auth-method${workspaceSyncMode === 'manual' ? ' is-active' : ''}" type="button" data-action="set-workspace-sync-mode" data-mode="manual" aria-pressed="${workspaceSyncMode === 'manual'}">手动同步</button>
       </div>
-      <p class="sync-dialog-note">账号同步包含日历、周计划、日课和已开启的 flomo 账号笔记。自动模式在插件页面可见时约每 12 分钟检查；本地编辑立即保存。立即同步会分别显示日程与 flomo 的结果，图片和草稿留在本机。</p>
+      <p class="sync-dialog-note">账号同步包含日历、周计划、日课和已开启的专注记录、flomo 账号笔记。自动模式在插件页面可见时约每 12 分钟检查；本地编辑立即保存。立即同步会分别显示日程、专注与 flomo 的结果，图片、草稿和进行中的计时留在本机。</p>
       <button class="sync-button" type="button" data-action="download-sync-backup">下载首次同步前的备份</button>
       ${conflicts.length ? `<div class="sync-conflict-list">${conflicts.map(conflict => `
         <div class="sync-conflict-card">
