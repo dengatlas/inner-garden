@@ -1,5 +1,7 @@
 'use strict';
 const FLOMO_BACKUPS_KEY='innerGardenFlomoBackups';
+const FLOMO_UNASSIGNED_KEYS=['innerGardenFlomo:undefined','innerGardenFlomo:null','innerGardenFlomo:[object Object]'];
+async function flomoUnassigned(){const disk=await chrome.storage.local.get(FLOMO_UNASSIGNED_KEYS);return FLOMO_UNASSIGNED_KEYS.filter(key=>disk[key]?.version===1&&Array.isArray(disk[key].notes)&&Array.isArray(disk[key].tags)).map(key=>({id:'unassigned-'+FLOMO_UNASSIGNED_KEYS.indexOf(key),snapshot:disk[key]}));}
 async function flomoBackup(owner,state,reason,options={}) {
  const collections=(await chrome.storage.local.get(FLOMO_BACKUPS_KEY))[FLOMO_BACKUPS_KEY]||{};
  const key=owner||'local',items=collections[key]||[],id=options.id||flomoContract.id('backup');
@@ -23,13 +25,15 @@ async function flomoHistoryHandle(owner,message) {
  if(message.method==='backupList'||message.method==='backupCreate') {
   const summaries=items.map(({snapshot,...entry})=>({...entry,count:snapshot.notes.filter(n=>!n.purgedAt).length}));
   if(owner){const local=await flomoRead('');summaries.push({id:'original-local',owner:'',reason:'原本机记录（归档）',createdAt:null,count:local.notes.filter(n=>!n.purgedAt).length,archive:true});}
+  for(const entry of await flomoUnassigned())summaries.push({id:entry.id,reason:'旧版未归属记录（请核对后合并）',createdAt:null,count:entry.snapshot.notes.filter(n=>!n.purgedAt).length,archive:true});
   return summaries;
  }
- const snapshot=message.id==='original-local'&&owner ? await flomoRead('') : items.find(item=>item.id===message.id)?.snapshot;
+ const snapshot=message.id==='original-local'&&owner ? await flomoRead('') : message.id?.startsWith('unassigned-')?(await flomoUnassigned()).find(item=>item.id===message.id)?.snapshot:items.find(item=>item.id===message.id)?.snapshot;
  if(!snapshot)throw new Error('这份备份已不存在，请刷新列表');
  const plan=flomoRestorePlan(state,snapshot,message.choices||{});
- if(message.method==='backupRead')return {version:1,notes:snapshot.notes,tags:snapshot.tags,expected:flomoContract.portable(state),sourceExpected:flomoContract.portable(snapshot),differences:plan.differences};
+ if(message.method==='backupRead')return {version:1,notes:snapshot.notes,tags:snapshot.tags,draft:message.id?.startsWith('unassigned-')?snapshot.draft:null,expected:flomoContract.portable(state),sourceExpected:flomoContract.portable(snapshot),differences:plan.differences};
  if(message.method!=='backupRestore')throw new Error('未知备份操作');
+ if((await flomoSelection()).owner!==owner)throw new Error('账号已切换，请重新打开备份后恢复');
  if(!flomoContract.equal(message.expected,flomoContract.portable(state)))throw new Error('笔记已变化，请重新预览后恢复');
  if(message.sourceExpected&&!flomoContract.equal(message.sourceExpected,flomoContract.portable(snapshot)))throw new Error('归档已变化，请重新预览后恢复');
  if(state.sync?.pending)throw new Error('请先重试上一次同步，再恢复备份');

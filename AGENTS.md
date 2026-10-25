@@ -66,3 +66,19 @@ Focus history sync and calendar projection have separate opt-ins. Project only l
 Canonical focus-records.js and workspace-sync.js live in D:/tab-out/shared and are copied by scripts/sync-focus-contract.mjs with pinned hashes. Port only the reviewed focus changes to sync-client.js; retain each project's authentication differences. Backend deployment adds private focus_sessions and the owner/type/revision change index before clients. Do not deploy the legacy extension, PWA or flomo backend for this feature.
 
 User restriction: legal-domain configuration has limited saves. Any modification/save of WeChat legal domains requires explicit consent for that individual save. Preserve existing domains, gateway routes, origins and authentication settings during this rollout. Code, test, package, cloud-deploy and real-device evidence are separate states.
+
+
+## 2026-10-24 flomo account-cache workflow
+
+The current flomo workflow supersedes older editable local/account library switching. After first enable, signed-in users view and edit their current account's device cache; pausing sync keeps that cache editable. Original local records remain a read-only archive and are never copied again merely by viewing, reopening, or switching accounts. First enable exchanges immediately with no empty confirmation when there are no original notes; otherwise show one account/count merge preview. Keep images and drafts local and preserve immutable pending requests, per-item conflicts and account isolation.
+
+Persist flomo sync choice per account and device. An explicit false overrides legacy inference from an existing account cache; reload, restart and cache reads must not re-enable it. Retain manual and 12-minute foreground scheduling. Show workspace (calendar/daily/week plans), focus and flomo results separately even though focus uses the workspace protocol. A failure in one category must not relabel or conceal another result.
+
+Keep page/worker flomo messages compatible. Missing owner fields must not create an undefined library. Preserve anomalous historical libraries for inspection; do not silently delete, merge into the active account, or upload them. Device migration retains flomo content/caches/pending data but resets its sync choices on the target device. Existing focus-history, claim-journal, source-device and opt-in migration rules remain unchanged.
+
+This client-only candidate requires no backend deployment, origin/gateway changes or legal-domain saves. Keep the already-deployed focus backend and its acceptance record intact. The formal extension candidate is 1.3.1; record new build, package/browser, Mini Program preview and same-UID real-account acceptance separately. See docs/FLOMO_SYNC.md in the independent extension and docs/FLOMO_DEPLOYMENT.md in D:/tab-out.
+
+
+## 2026-10-25 device authorization proxy
+
+The existing tab-out-sync authentication proxy now supports device-code issuance and exchange. The deployment preserves all current origins, routes, configuration and previously deployed workspace/focus/agent code. Device-code issuance and pending responses were verified live; phone confirmation, same-UID login and bidirectional synchronization remain separate acceptance steps. See docs/DEVICE_AUTH_SERVICE_CHANGE.md and docs/WECHAT_DESKTOP_LOGIN.md for current evidence. Mini Program account-page and binding feedback changes remain in D:/tab-out; do not copy its authentication client wholesale into this independent extension.

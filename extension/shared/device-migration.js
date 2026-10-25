@@ -10,10 +10,11 @@
   const accountStatesKey = /^tabOutSyncStateAccounts(?::|$)/;
 
   function filterStorage(storage) {
-    return Object.fromEntries(Object.entries(storage || {})
+    const result = Object.fromEntries(Object.entries(storage || {})
       .filter(([key]) => !authStorageKey.test(key) && !['innerGardenWorkspaceAutoSyncAttempts', 'innerGardenFocusDeviceId'].includes(key))
       .map(([key, value]) => {
         if (key === 'innerGardenFocusAccounts') return [key, { ...value, syncAccounts: {} }];
+        if (key === 'innerGardenFlomoSelection') return [key, { accountId: '', owner: '' }];
         if (syncStateKey.test(key)) return [key, { ...value, deviceId: '' }];
         if (accountStatesKey.test(key)) {
           const states = Object.fromEntries(Object.entries(value?.states || {}).map(([accountId, state]) => [accountId, { ...state, deviceId: '' }]));
@@ -21,6 +22,14 @@
         }
         return [key, value];
       }));
+    // A copied library remains readable, but transport is a choice on the new device.
+    const owners = new Set(Object.keys(result.innerGardenFlomoSyncAccounts || {}));
+    for (const key of Object.keys(result)) {
+      const match = key.match(/^innerGardenFlomo:(uid:[\w.:-]+)$/);
+      if (match) owners.add(match[1]);
+    }
+    if (owners.size) result.innerGardenFlomoSyncAccounts = Object.fromEntries([...owners].map(owner => [owner, false]));
+    return result;
   }
 
   function validatePayload(payload) {
@@ -60,6 +69,7 @@
     return Object.entries(storage || {}).every(([key, value]) => {
       if (key === 'innerGardenFocusDeviceId') return typeof value === 'string' && value.startsWith('focus-device-');
       if (key === 'innerGardenFlomoSelection') return value && value.accountId === '' && value.owner === '' && Object.keys(value).every(field => ['accountId','owner'].includes(field));
+      if (key === 'innerGardenFlomoSyncAccounts') return emptyObject(value);
       if (key === 'weeklyWorkspace') return blankWorkspace(value);
       if (key === 'tabOutWorkspaceRevision') return Number.isSafeInteger(value) && value >= 0;
       if (key === 'tabOutWorkspaceOwner') return value === 'local';

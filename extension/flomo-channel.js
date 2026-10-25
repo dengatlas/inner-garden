@@ -1,6 +1,7 @@
 (() => {
   'use strict';
-  let port = null, sequence = 0;
+  let port = null, sequence = 0, compatible = false, handshake = null;
+  const protocolVersion = 2;
   const pending = new Map();
   const disconnected = 'flomo 后台连接已断开。请在扩展管理页重新加载本扩展，再刷新页面；当前未保存的内容仍留在输入框，请先复制保存。';
   const connectionError=message=>Object.assign(new Error(message),{backgroundUnavailable:true});
@@ -19,21 +20,34 @@
       void chrome.runtime.lastError;
       if (port !== connection) return;
       port = null;
+      compatible = false; handshake = null;
       for (const task of pending.values()) { clearTimeout(task.timer); task.reject(connectionError(disconnected)); }
       pending.clear();
     });
     return connection;
   }
-  globalThis.InnerGardenFlomoChannel = {
-    reconnect() {if(pending.size)throw new Error('插件仍在处理操作，请稍后重试连接');const previous=port;port=null;previous?.disconnect();},
-    request(message) {
+  function validateStatus(status) {
+    if(status?.protocolVersion!==protocolVersion||typeof status.accountId!=='string'||typeof status.selectedOwner!=='string'||typeof status.syncEnabled!=='boolean'||typeof status.activated!=='boolean'||(status.selectedOwner!==''&&status.selectedOwner!==status.accountId)) {
+      compatible=false;
+      throw connectionError('页面与后台版本不一致。请在扩展管理页重新加载本扩展，再刷新旧页面；未保存内容请先复制，原笔记仍保留。');
+    }
+    compatible=true;return status;
+  }
+  function send(message) {
       return new Promise((resolve, reject) => {
         const id = ++sequence;
         const timer = setTimeout(() => { pending.delete(id); reject(connectionError('插件尚未确认操作结果，请保留输入并重试连接，核对记录后再保存。')); }, message.method === 'sync' ? 180000 : 30000);
         pending.set(id, { resolve, reject, timer });
-        try { connect().postMessage({ ...message, requestId: id }); }
+        try { connect().postMessage({ ...message, protocolVersion, requestId: id }); }
         catch (_) { clearTimeout(timer); pending.delete(id); reject(connectionError(disconnected)); }
       });
+  }
+  globalThis.InnerGardenFlomoChannel = {
+    reconnect() {if(pending.size)throw new Error('插件仍在处理操作，请稍后重试连接');const previous=port;port=null;compatible=false;handshake=null;previous?.disconnect();},
+    async request(message) {
+      if(message.method==='status')return validateStatus(await send({...message,owner:''}));
+      if(!compatible)await (handshake ||= send({method:'status'}).then(validateStatus).finally(()=>{handshake=null;}));
+      return send(message);
     }
   };
 })();

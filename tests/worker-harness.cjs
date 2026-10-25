@@ -41,6 +41,7 @@ function workerHarness(initial = {}, overrides = {}) {
   };
   context.importScripts('background.js');
   async function message(payload, sender = { id: runtimeId, url: `chrome-extension://${runtimeId}/index.html` }) {
+    if(payload.channel==='inner-garden-flomo-request')payload={protocolVersion:2,...payload};
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('Worker response timed out')), 2000);
       const respond = value => { clearTimeout(timer); resolve(clone(value)); };

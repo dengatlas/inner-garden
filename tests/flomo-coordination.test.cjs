@@ -7,11 +7,11 @@ async function ready() {
  vm.runInContext("backgroundSyncClient.getPublicState=()=>({loggedIn:true,configured:true,accountId:syntheticAccount});backgroundSyncClient.ensureAccessToken=async()=> 'synthetic-token';",h.context);
  return h;
 }
-test('account library choice follows login, preserves local viewing, and never copies the previous account',async()=>{
+test('account library follows login, archive preview never switches editing, and accounts never copy each other',async()=>{
  const h=await ready();h.data['innerGardenFlomo:uid:a']=F.empty();
  assert.equal((await h.message({channel:'inner-garden-flomo-request',method:'status'})).result.selectedOwner,'uid:a');
  await h.message({channel:'inner-garden-flomo-request',method:'local'});
- assert.equal((await h.message({channel:'inner-garden-flomo-request',method:'status'})).result.selectedOwner,'');
+ assert.equal((await h.message({channel:'inner-garden-flomo-request',method:'status'})).result.selectedOwner,'uid:a');
  h.context.syntheticAccount='uid:b';
  assert.equal((await h.message({channel:'inner-garden-flomo-request',method:'status'})).result.selectedOwner,'');
  await h.message({channel:'inner-garden-flomo-request',method:'account',owner:'uid:a',copy:true});

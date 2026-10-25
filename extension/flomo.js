@@ -1,7 +1,7 @@
 (() => {
  'use strict';
  const F=globalThis.InnerGardenFlomo,$=id=>document.getElementById(id);
- let state,owner=localStorage.getItem('flomoOwner')||sessionStorage.getItem('flomoOwner')||'',filter='',trash=false,editing=null,incoming=null,draftTimer;
+ let state,owner='',filter='',trash=false,editing=null,incoming=null,draftTimer;
  let editForm=null,editBody=null,suspendedEdit=null,saving=false,newImages=[],editImages=[];
  const imageDrawers=new WeakMap();
  const tagEditors=new WeakMap();let tagEditorId=0;
@@ -10,7 +10,7 @@
  window.addEventListener('resize',refreshTagEditors);
  const trashSelected=new Set();
  const expanded=new Set(), collapsedTags=new Set(), collapsedPinned=new Set();
- let accountStatus={},accountRefresh=0,syncing=false;
+ let accountStatus={},accountRefresh=0,syncing=false,enabling=false,pendingToggle=null,lastSyncResults=null;
  const request=async(method,data={})=>{try{return await globalThis.InnerGardenFlomoChannel.request({owner,method,...data});}catch(error){if(error.backgroundUnavailable)$('flomoReconnect').hidden=false;throw error;}};
  const message=text=>$('flomoMessage').textContent=text;
  const guarded=fn=>async(...args)=>{try{await fn(...args);}catch(e){message(e.message);}};
@@ -43,16 +43,20 @@
  function render(){
   const focusedEditor=editForm?.contains(document.activeElement)?document.activeElement:null;
   const editorSelection=focusedEditor&&typeof focusedEditor.selectionStart==='number'?[focusedEditor.selectionStart,focusedEditor.selectionEnd,focusedEditor.selectionDirection]:null;
-  $('flomoLibraryLabel').textContent=owner?'同步笔记'+(accountStatus.accountId===owner&&accountStatus.username?' · '+accountStatus.username:''):'仅保存在这台电脑';
+  const noteCount=state.notes.filter(note=>!note.deletedAt&&!note.purgedAt).length;
+  $('flomoLibraryLabel').textContent=(owner?'账号笔记'+(accountStatus.accountId===owner&&accountStatus.username?' · '+accountStatus.username:''):'仅保存在这台电脑')+' · '+noteCount+' 条';
   const enabled=Boolean(accountStatus.syncEnabled);
-  $('flomoAccount').hidden=enabled&&owner===accountStatus.accountId;
-  $('flomoAccount').textContent=enabled?'返回账号笔记':'开启 flomo 同步';
-  $('flomoSync').disabled=!enabled||!accountStatus.loggedIn||syncing;
+  $('flomoAccount').hidden=Boolean(accountStatus.loggedIn);
+  $('flomoAccount').textContent='登录账号';
+  $('flomoSyncEnabled').checked=enabling&&pendingToggle!==null?pendingToggle:enabled;
+  $('flomoSyncEnabled').disabled=!accountStatus.loggedIn||!accountStatus.configured||syncing||enabling;
+  $('flomoSync').disabled=!enabled||!accountStatus.loggedIn||syncing||enabling;
   $('flomoSync').textContent=syncing?'同步中…':'立即同步';
-  $('flomoSyncHelp').textContent=accountStatus.authRequired?'登录已失效，请在账号入口重新登录。本机笔记仍可编辑，同步设置已保留。':enabled?'已加入当前账号 '+(accountStatus.username||'')+'。立即同步分别交换日程和笔记；自动模式在页面可见时每12分钟检查。':accountStatus.loggedIn?'将本机笔记加入当前账号并完成首次同步。':'先在页面上方登录账号，本机记录无需登录。';
+  const mode=typeof workspaceSyncMode!=='undefined'&&workspaceSyncMode==='auto'?'自动模式：页面可见时约每12分钟检查。':'手动模式：点击立即同步才交换。';
+  $('flomoSyncHelp').textContent=accountStatus.authRequired?'登录已失效，请在账号入口重新登录。账号笔记仍可离线编辑，同步设置已保留。':enabled?'当前账号 '+(accountStatus.username||accountStatus.accountId)+'。'+mode+' 每类内容分别显示结果，保存先写入本机。':accountStatus.activated?'flomo 同步已暂停，账号笔记仍可编辑；重新开启后合并交换。':accountStatus.loggedIn?'开启后合并原本机记录，并下载当前账号的云端笔记。':'先在页面上方登录账号，本机记录无需登录。';
   $('flomoLocal').hidden=!owner||!accountStatus.localCount;
   const progress=InnerGardenFlomoSync.status(state);
-  $('flomoSyncStatus').textContent=(accountStatus.authRequired?'等待重新登录':progress.error?'同步未完成：'+progress.error:progress.conflict?'有 '+progress.conflictCount+' 条差异待选择，其他笔记可继续同步':!owner?'已保存到本机':progress.dirty?'有修改待同步':progress.lastSyncedAt?'已同步':'尚未同步')+(progress.lastSyncedAt?' · 最近成功交换 '+new Date(progress.lastSyncedAt).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'}):'')+(state.sync?.lastResult?' · 接收 '+state.sync.lastResult.received+' 条新增或更新':'');
+  $('flomoSyncStatus').textContent=(accountStatus.authRequired?'等待重新登录':owner&&!enabled?'已暂停传输，修改保存在本机':progress.error?'同步未完成：'+progress.error:progress.conflict?'有 '+progress.conflictCount+' 条差异待选择，其他笔记可继续同步':!owner?'已保存到本机':progress.dirty?'有修改待同步':progress.lastSyncedAt?'已同步':'尚未同步')+(progress.lastSyncedAt?' · 最近成功交换 '+new Date(progress.lastSyncedAt).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'}):'')+(state.sync?.lastResult?' · 接收 '+state.sync.lastResult.received+' 条新增或更新':'');
   renderConflicts();
   const selected=$('flomoExportTag').value;
   $('flomoTags').replaceChildren(button('批量整理标签',openTagBatch));$('flomoExportTag').replaceChildren(new Option('全部标签',''));
@@ -258,7 +262,7 @@
   const file=$('flomoImportFile').files[0];if(!file)return;if(file.size>4000000)throw new Error('文件过大，请分批导入');incoming=F.parse(await file.text(),file.name);const result=F.mergeImport(state,incoming);
   const panel=$('flomoImportPreview');panel.hidden=false;panel.replaceChildren(element('p',`${file.name}：新增 ${result.added} 条，重复 ${result.duplicates} 条，冲突副本 ${result.conflicts} 条。`),button('确认导入',async()=>{state=await request('import',{incoming});panel.hidden=true;incoming=null;render();message('导入完成');}),button('取消',()=>{incoming=null;panel.hidden=true;}));$('flomoImportFile').value='';
  }));
- async function switchLibrary(nextOwner,nextState){if(nextOwner!==owner)$('flomoScopeStatus').textContent='';owner=nextOwner;sessionStorage.setItem('flomoOwner',owner);localStorage.setItem('flomoOwner',owner);state=nextState;filter='';trash=false;restoreDraft();render();}
+ async function switchLibrary(nextOwner,nextState){if(typeof nextOwner!=='string'||(nextOwner!==''&&!/^uid:[\w.:-]+$/.test(nextOwner)))throw Error('笔记库标识无效，请重新加载扩展并刷新页面；输入内容仍保留。');if(nextOwner!==owner)$('flomoScopeStatus').textContent='';owner=nextOwner;sessionStorage.setItem('flomoOwner',owner);localStorage.setItem('flomoOwner',owner);state=nextState;filter='';trash=false;restoreDraft();render();}
  async function refreshAccountStatus(){
   const ticket=++accountRefresh,next=await request('status');
   if(ticket!==accountRefresh)return;
@@ -278,27 +282,32 @@
   }
  }
  async function runSync(){
-  if(syncing)return;syncing=true;render();message('正在同步日程与笔记…');
-  try{const ok=await performWorkspaceSync(false);message(ok?'已交换数据，请查看同步状态':'部分内容未完成，请查看账号和笔记的同步结果');}
+  if(!accountStatus.syncEnabled){message('flomo 同步已暂停，修改保存在本机；重新开启后交换。');return;}
+  if(syncing)return;syncing=true;lastSyncResults=null;render();message('正在交换已开启的账号数据…');
+  try{await performWorkspaceSync(false);const result=lastSyncResults?.scopes.flomo;message(!result?'笔记尚未执行同步，请查看账号状态后重试。':result.error?'笔记同步未完成：'+result.error:result.conflict?'其他笔记已交换，仍有差异待选择。':result.dirty?'笔记已交换，仍有本机修改待同步。':'笔记同步完成 · 接收 '+result.received+' 条新增或更新');}
   finally{syncing=false;try{await refreshAccountStatus();state=await request('read');}finally{render();}}
  }
- $('flomoAccount').addEventListener('click',guarded(async()=>{
+ async function enableAccountSync(){
   await saveDraft();await refreshAccountStatus();
   if(!accountStatus.loggedIn){message('请先在页面上方登录账号。');document.getElementById('weeklyWorkspace')?.scrollIntoView({behavior:'smooth'});return;}
   if(!accountStatus.configured)throw new Error('笔记同步服务尚未配置，本机内容已保留。');
-  if(accountStatus.syncEnabled){const result=await request('account',{copy:false});await switchLibrary(result.owner,result.state);return;}
+  if(accountStatus.syncEnabled)return;
   const enableAccountId=accountStatus.accountId;
-  const panel=$('flomoEnablePreview');panel.replaceChildren(element('p','将 '+accountStatus.localCount+' 条本机笔记加入账号 '+(accountStatus.username||accountStatus.accountId)+'。原记录保留，图片留在这台电脑。'));
-  const join=button('加入账号并同步',async()=>{join.disabled=true;try{const result=await request('account',{copy:true,expectedAccountId:enableAccountId});panel.hidden=true;await refreshAccountStatus();await switchLibrary(result.owner,result.state);await runSync();}finally{join.disabled=false;}});
-  panel.append(join,button('取消',()=>{panel.hidden=true;}));panel.hidden=false;
- }));
- window.addEventListener('inner-garden-sync-result',event=>{if(event.detail.accountId!==accountStatus.accountId)return;$('flomoScopeStatus').textContent=Object.entries(event.detail.scopes).map(([scope,result])=>(scope==='flomo'?'笔记':'日程')+'：'+(result.error|| (result.conflict?'有差异待选择':result.dirty?'仍有修改待同步':'已同步'))).join(' · ');});
+  const panel=$('flomoEnablePreview');
+  const activate=async()=>{if(enabling)return;enabling=true;render();try{const result=await request('account',{copy:true,expectedAccountId:enableAccountId});panel.hidden=true;await refreshAccountStatus();await switchLibrary(result.owner,result.state);await runSync();}finally{enabling=false;render();}};
+  if(accountStatus.activated||accountStatus.localCount===0){await activate();return;}
+  panel.replaceChildren(element('p','将 '+accountStatus.localCount+' 条原本机笔记加入账号 '+(accountStatus.username||accountStatus.accountId)+'，同时下载云端笔记。原记录保留为归档，图片留在这台电脑。'),button('确认开启',activate),button('取消',()=>{panel.hidden=true;render();}));panel.hidden=false;render();
+ }
+ $('flomoAccount').addEventListener('click',guarded(enableAccountSync));
+ $('flomoSyncEnabled').addEventListener('change',guarded(async()=>{const enabled=$('flomoSyncEnabled').checked;pendingToggle=enabled;try{if(enabled)await enableAccountSync();else{enabling=true;render();await request('pause',{expectedAccountId:accountStatus.accountId});await refreshAccountStatus();state=await request('read');message('flomo 同步已暂停，账号笔记仍可离线编辑。');}}finally{enabling=false;pendingToggle=null;if(state)render();}}));
+ window.addEventListener('inner-garden-sync-result',event=>{if(event.detail.accountId!==accountStatus.accountId)return;lastSyncResults=event.detail;$('flomoScopeStatus').textContent=Object.entries(event.detail.scopes).map(([scope,result])=>({workspace:'日程 / 日课',focus:'专注记录',flomo:'笔记'}[scope]||scope)+'：'+(result.error|| (result.conflict?'有差异待选择':result.dirty?'仍有修改待同步':'已同步'))).join(' · ');});
  $('flomoSync').addEventListener('click',guarded(runSync));
- $('flomoReconnect').addEventListener('click',guarded(async()=>{globalThis.InnerGardenFlomoChannel.reconnect();await refreshAccountStatus();state=await request('read');render();$('flomoReconnect').hidden=true;message('插件连接已恢复，输入内容保留；请核对笔记后再保存。');}));
+ $('flomoReconnect').addEventListener('click',guarded(async()=>{const retained=!state?draftSnapshot():null;globalThis.InnerGardenFlomoChannel.reconnect();await refreshAccountStatus();state=await request('read');if(retained&&(retained.body||retained.images.length)){$('flomoBody').value=retained.body;newImages=[...retained.images];imageDrawers.get($('flomoComposer'))?.();}render();$('flomoReconnect').hidden=true;message('插件连接已恢复，输入内容保留；请核对笔记后再保存。');}));
  async function showBackup(id){
   const targetOwner=owner,snapshot=await request('backupRead',{id});if(owner!==targetOwner)throw new Error('账号已切换，请重新打开备份');
   const dialog=element('dialog',undefined,'flomo-history-dialog'),expected=snapshot.expected,choices={},differences=[];
   dialog.append(element('h3',id==='original-local'?'原本机记录归档':'备份预览'));
+  if(snapshot.draft){const body=[snapshot.draft.body,snapshot.draft.edit?.body].filter(Boolean).join('\n\n');if(body)dialog.append(element('small','原库未保存草稿（不会覆盖当前草稿，可复制保留）'),element('pre',body),button('复制原草稿',()=>navigator.clipboard.writeText(body)));}
   for(const note of snapshot.notes.filter(n=>!n.purgedAt)){
    const row=element('div',undefined,'flomo-difference'),difference=snapshot.differences.find(item=>item.id===note.id),current=difference?.local;
    row.append(element('pre',note.body+(note.deletedAt?'\n（在回收站）':'')));
@@ -321,6 +330,6 @@
  $('flomoPalette').value=['green','paper','blue'].includes(localStorage.getItem('flomoPalette'))?localStorage.getItem('flomoPalette'):'green';$('flomoSection').dataset.palette=$('flomoPalette').value;
  $('flomoPalette').addEventListener('change',()=>{const palette=$('flomoPalette').value;localStorage.setItem('flomoPalette',palette);$('flomoSection').dataset.palette=palette;});
  chrome.runtime.onMessage.addListener(event=>{if(event?.channel==='tab-out-workspace-status'||event?.channel==='tab-out-workspace-update'||event?.channel==='inner-garden-flomo-library')guarded(async()=>{await refreshAccountStatus();if(state)render();})();if(event?.channel==='inner-garden-flomo-changed'&&event.owner===owner&&!saving)guarded(async()=>{state=await request('read');if(!document.querySelector('.flomo-tag-menu'))render();})();});
- function restoreDraft(){suspendedEdit=null;const d=state.draft||{},edit=d.edit||(d.id?d:null);$('flomoBody').value=d.id?'':d.body||'';newImages=[...(d.images||[])];imageDrawers.get($('flomoComposer'))?.();const n=edit&&state.notes.find(n=>n.id===edit.id);editImages=[...(edit?.images||n?.images||[])];editing=n?{...n,updatedAt:edit.updatedAt,draftBody:edit.body}:null;editForm=null;editBody=null;}
- guarded(async()=>{state=await request('read');restoreDraft();render();await refreshAccountStatus();render();})();
+ function restoreDraft(){suspendedEdit=null;const d=state.draft||{},edit=d.edit||(d.id?d:null);$('flomoBody').value=d.id?'':d.body||'';const counter=$('flomoComposer').querySelector('.flomo-char-count');if(counter)counter.textContent=Array.from($('flomoBody').value).length+' 字';newImages=[...(d.images||[])];imageDrawers.get($('flomoComposer'))?.();const n=edit&&state.notes.find(n=>n.id===edit.id);editImages=[...(edit?.images||n?.images||[])];editing=n?{...n,updatedAt:edit.updatedAt,draftBody:edit.body}:null;editForm=null;editBody=null;}
+ guarded(async()=>{await refreshAccountStatus();if(!state){state=await request('read');restoreDraft();}render();})();
 })();

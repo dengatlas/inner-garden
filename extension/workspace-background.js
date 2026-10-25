@@ -138,10 +138,10 @@ async function controlWorkspace(message) {
           await saveBackgroundWorkspace();
         });
       },
-    }); scopes.workspace = { ok: true, dirty:Boolean(result.state?.queued), conflict:Boolean(result.state?.conflicts) };
+    }); scopes.workspace = { ok: true, dirty:Number(result.state?.queued||0)>Number(result.state?.focusQueued||0), conflict:Boolean(result.state?.conflicts) };
       if(focusEnabled)scopes.focus=result.summary?.focusError?{error:result.summary.focusError}:{ok:true,dirty:Boolean(result.state?.focusQueued)};
     }
-    catch (error) { scopes.workspace = { error: error.message }; result = { state: backgroundSyncClient.getPublicState() }; }
+    catch (error) { scopes.workspace = { error: error.message }; if(focusEnabled)scopes.focus={error:error.message}; result = { state: backgroundSyncClient.getPublicState() }; }
     // Independent engines share a trigger, never data or failure handling.
     const selection = await flomoWrite(flomoSelection);
     if (selection.syncEnabled && selection.accountId === accountId && (globalThis.TAB_OUT_SYNC_CONFIG||{}).flomoApiBaseUrl) {

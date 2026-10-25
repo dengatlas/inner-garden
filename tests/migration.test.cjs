@@ -58,6 +58,18 @@ test('migration retains focus history and claims but resets device identity and 
   assert.equal(M.isPristineStorage({innerGardenFocusAccounts:restored.innerGardenFocusAccounts}),false);
 });
 
+test('migration retains flomo caches and unassigned drafts but resets transport even for legacy caches', () => {
+  const legacy={version:1,notes:[{id:'keep-note'}],tags:[],draft:{body:'keep draft'}};
+  const source={innerGardenFlomoSelection:{accountId:'uid:a',owner:'uid:a'},innerGardenFlomoSyncAccounts:{'uid:a':true},'innerGardenFlomo:uid:a':legacy,'innerGardenFlomo:uid:b':legacy,'innerGardenFlomo:undefined':legacy};
+  const next=M.validatePayload(payload(source));
+  assert.deepEqual(next.innerGardenFlomoSyncAccounts,{'uid:a':false,'uid:b':false});
+  assert.deepEqual(next.innerGardenFlomoSelection,{accountId:'',owner:''});
+  assert.deepEqual(next['innerGardenFlomo:uid:a'],legacy);assert.deepEqual(next['innerGardenFlomo:undefined'],legacy);
+  assert.equal(source.innerGardenFlomoSyncAccounts['uid:a'],true);
+  assert.equal(M.isPristineStorage({innerGardenFlomoSyncAccounts:{}}),true);
+  assert.equal(M.isPristineStorage(next),false);
+});
+
 test('saved content prevents migration without altering any stored value', async () => {
   const worker = workerHarness({}, { enabled: false });
   const initial = await worker.request({ method: 'initialize' });
