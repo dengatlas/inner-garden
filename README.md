@@ -2,9 +2,11 @@
 
 本地优先的桌面 Chrome 新标签页工作区：整理标签、管理稍后再看、专注计时、安排日历与周计划、记录日课和 flomo 笔记。
 
-本地候选版本 **1.3.0**，公开源码仓库为 [dengatlas/inner-garden](https://github.com/dengatlas/inner-garden)，尚未发布 GitHub Release 或提交扩展商店。本轮新增可选账号专注记录与统计同步，保留 flomo 同步修复、本机备份历史和合并恢复；真实双设备验收以验收记录为准。本机编辑无需登录。
+当前版本 **1.3.2**，公开源码仓库为 [dengatlas/inner-garden](https://github.com/dengatlas/inner-garden)。本版修复手机授权码与授权范围兼容，支持按真实有效期保存无刷新凭据的会话；保留账号专注记录、flomo 同步和本机备份。本机编辑无需登录。用户已确认实际桌面登录与部分数据同步成功，具体证据范围见[验收记录](docs/ACCEPTANCE.md)。
 
 ## 安装
+
+正式发布后，可从 [v1.3.2 发布页](https://github.com/dengatlas/inner-garden/releases/tag/v1.3.2)下载 `inner-garden-1.3.2.zip` 和 `.sha256` 校验文件。发布状态以该页面为准。
 
 解压安装 ZIP，打开 `chrome://extensions`，启用“开发者模式”，点击“加载已解压的扩展程序”，选择包含 `manifest.json` 的目录。源码目录安装请选择 `extension/`。无需 npm、Node 或后端部署。
 

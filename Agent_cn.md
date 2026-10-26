@@ -13,7 +13,7 @@
 - docs/DECISIONS.md 和 docs/decisions/public-edition.json 记录已确认的 1B/2A/3A/4A/5A 及后续公开仓库授权：现有 CloudBase 面向服务允许的账号、新固定 ID、本地字体图标、审查 prompt 与独立 Git。
 - docs/ACCEPTANCE.md 记录当前验证和待验收事项；自动检查、浏览器验收、云账号验收、发布分开报告。
 - MIGRATION_HANDOFF.md、PUBLIC_RELEASE_PLAN.md、COPY_BASELINE.json 是被忽略的历史交接材料，不代表当前产品策略；不重写基线掩盖有意变化。
-- 新 ID 是 ohdenlpjdfngpaaggijhcagfpafecgdn，保持稳定。用户于 2026-09-30 授权追加账号来源，配置及预检已验证。真实账号登录/同步仍待验收；不能仅凭来源授权宣称全部账号已可用。
+- 新 ID 是 ohdenlpjdfngpaaggijhcagfpafecgdn，保持稳定。用户于 2026-09-30 授权追加账号来源，配置及预检已验证。当前验收以 docs/ACCEPTANCE.md 为准，包含用户确认的实际桌面登录及部分同步成功；不能仅凭来源授权宣称全部账号已可用。
 
 ## 实现边界
 
@@ -34,7 +34,7 @@
 
 ## 分发与 Git
 
-- 本目录已获确认为独立 Git 根，工作分支用 codex/；当前分支为 codex/public-edition，origin 为 https://github.com/dengatlas/inner-garden.git。不继承原项目历史和 remote，不初始化其他项目。
+- 本目录已获确认为独立 Git 根，工作分支用 codex/；1.3.2 发布准备分支为 codex/release-1.3.2，早期独立分支为 codex/public-edition，origin 为 https://github.com/dengatlas/inner-garden.git。不继承原项目历史和 remote，不初始化其他项目。
 - npm run package 按 scripts/extension-files.mjs 白名单打包，包含 LICENSE、字体/图标许可和安装/隐私说明，排除 config.local.js 与私人数据。
 - 安装方式为解压、Chrome 开发者模式、加载含 manifest 的目录；不承诺任意 CRX 拖拽或 GitHub 自动更新。
 - manifest、package.json、策略和 changelog 版本保持一致；最终内容变化后重建并验证包。
@@ -82,3 +82,14 @@ This client-only candidate requires no backend deployment, origin/gateway change
 ## 2026-10-25 device authorization proxy
 
 The existing tab-out-sync authentication proxy now supports device-code issuance and exchange. The deployment preserves all current origins, routes, configuration and previously deployed workspace/focus/agent code. Device-code issuance and pending responses were verified live; phone confirmation, same-UID login and bidirectional synchronization remain separate acceptance steps. See docs/DEVICE_AUTH_SERVICE_CHANGE.md and docs/WECHAT_DESKTOP_LOGIN.md for current evidence. Mini Program account-page and binding feedback changes remain in D:/tab-out; do not copy its authentication client wholesale into this independent extension.
+
+
+## 1.3.2 device-flow compatibility
+
+Device authorization codes are opaque strings (1-256 visible non-space characters), preserved without case or whitespace normalization. QR v1 may include the exact server-issued scope. A successful device grant may omit refresh_token; accept a valid access token and expiry after exact UID verification, keep credentials in the worker, cap access-only trust at the absolute access expiry, and show that deadline. Never claim ten-day persistence for such grants. Version, manifest, package policy and changelog are 1.3.2. The packaged ZIP passed isolated Chrome UI checks; real same-UID service exchange passed with the temporary test session revoked. Installed-client UI and bidirectional data acceptance remain separate.
+
+## 2026-10-26 release preparation and user acceptance
+
+The user confirmed successful login in their actual installed desktop client and partial data synchronization. Record this as user-reported real-terminal acceptance. Data categories, directions and create/edit/delete coverage were not specified; do not infer full workspace/focus/flomo bidirectional acceptance. This section supersedes generic pending-login statements for this user-confirmed scope.
+
+Prepare version 1.3.2 as a formal release on codex/release-1.3.2. Keep source, package and acceptance evidence aligned. Preserve necessary development paths and public connection identifiers. After reviewing the final artifacts and release notes, the user explicitly authorized committing this reviewed batch, pushing and integrating it into main, tagging v1.3.2 and creating the formal public GitHub Release with only the installation ZIP and its checksum attached. This authorization applies to this 1.3.2 release. No store submission or remote-service changes are included.

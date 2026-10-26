@@ -13,7 +13,7 @@
 - docs/DECISIONS.md and docs/decisions/public-edition.json record the user's accepted 1B/2A/3A/4A/5A choices and subsequent public-repository authorization: existing CloudBase for service-eligible accounts, new fixed ID, local fonts/icons, reviewed prompt content and independent Git.
 - docs/ACCEPTANCE.md records current evidence and open acceptance. Do not conflate automated checks, browser acceptance, cloud-account acceptance and publication.
 - MIGRATION_HANDOFF.md, PUBLIC_RELEASE_PLAN.md and COPY_BASELINE.json are historical ignored handoff material, not current product policy. Never overwrite the baseline to conceal intentional development differences.
-- The new ID is ohdenlpjdfngpaaggijhcagfpafecgdn. Keep it stable. The user authorized appending this account origin on 2026-09-30; the change and preflight were verified. Real account login/sync remain pending; do not claim all accounts are usable from origin authorization alone.
+- The new ID is ohdenlpjdfngpaaggijhcagfpafecgdn. Keep it stable. The user authorized appending this account origin on 2026-09-30; the change and preflight were verified. Current acceptance is recorded in docs/ACCEPTANCE.md, including user-confirmed desktop login and partial synchronization; do not claim all accounts are usable from origin authorization alone.
 
 ## Implementation boundaries
 
@@ -34,7 +34,7 @@
 
 ## Distribution and Git
 
-- Project root is confirmed as this directory. Use codex/ working branches. Current branch is codex/public-edition; origin is https://github.com/dengatlas/inner-garden.git. No original project history or remote is inherited; initialize no other project.
+- Project root is confirmed as this directory. Use codex/ working branches. The 1.3.2 release preparation branch is codex/release-1.3.2; the earlier independent branch is codex/public-edition; origin is https://github.com/dengatlas/inner-garden.git. No original project history or remote is inherited; initialize no other project.
 - npm run package uses scripts/extension-files.mjs as an explicit allowlist. Include LICENSE, font and icon notices, installation/privacy instructions; exclude config.local.js and private data.
 - ZIP installation: extract, Chrome Developer mode, Load unpacked, select manifest directory. Do not promise arbitrary CRX drag-and-drop or GitHub automatic updates.
 - Keep version in manifest, package.json, policy and changelog consistent. Rebuild/retest a package after its final content changes.
@@ -82,3 +82,14 @@ This client-only candidate requires no backend deployment, origin/gateway change
 ## 2026-10-25 device authorization proxy
 
 The existing tab-out-sync authentication proxy now supports device-code issuance and exchange. The deployment preserves all current origins, routes, configuration and previously deployed workspace/focus/agent code. Device-code issuance and pending responses were verified live; phone confirmation, same-UID login and bidirectional synchronization remain separate acceptance steps. See docs/DEVICE_AUTH_SERVICE_CHANGE.md and docs/WECHAT_DESKTOP_LOGIN.md for current evidence. Mini Program account-page and binding feedback changes remain in D:/tab-out; do not copy its authentication client wholesale into this independent extension.
+
+
+## 1.3.2 device-flow compatibility
+
+Device authorization codes are opaque strings (1-256 visible non-space characters), preserved without case or whitespace normalization. QR v1 may include the exact server-issued scope. A successful device grant may omit refresh_token; accept a valid access token and expiry after exact UID verification, keep credentials in the worker, cap access-only trust at the absolute access expiry, and show that deadline. Never claim ten-day persistence for such grants. Version, manifest, package policy and changelog are 1.3.2. The packaged ZIP passed isolated Chrome UI checks; real same-UID service exchange passed with the temporary test session revoked. Installed-client UI and bidirectional data acceptance remain separate.
+
+## 2026-10-26 release preparation and user acceptance
+
+The user confirmed successful login in their actual installed desktop client and partial data synchronization. Record this as user-reported real-terminal acceptance. Data categories, directions and create/edit/delete coverage were not specified; do not infer full workspace/focus/flomo bidirectional acceptance. This section supersedes generic pending-login statements for this user-confirmed scope.
+
+Prepare version 1.3.2 as a formal release on codex/release-1.3.2. Keep source, package and acceptance evidence aligned. Preserve necessary development paths and public connection identifiers. After reviewing the final artifacts and release notes, the user explicitly authorized committing this reviewed batch, pushing and integrating it into main, tagging v1.3.2 and creating the formal public GitHub Release with only the installation ZIP and its checksum attached. This authorization applies to this 1.3.2 release. No store submission or remote-service changes are included.

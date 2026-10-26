@@ -3025,7 +3025,7 @@ function renderSavedAccountChoices(state) {
   if (!accounts.length) return '';
   return `
     <div class="sync-saved-accounts" aria-label="本机保存的账号">
-      <div class="sync-section-title"><strong>切换账号</strong><span>只保存 10 天会话，不保存密码</span></div>
+      <div class="sync-section-title"><strong>切换账号</strong><span>会话最长保存 10 天，具体以服务端有效期为准；不保存密码</span></div>
       ${accounts.map(account => `
         <div class="sync-saved-account">
           <div><strong>${escapeHtml(account.username || 'Inner Garden · 美日心灵 账号')}</strong><span>UID：${escapeHtml(account.userId || String(account.accountId || '').replace(/^uid:/, ''))}</span><span>${account.usable ? `免密登录至 ${escapeHtml(formatWorkspaceSyncTimestamp(account.trustedUntil, '会话到期'))}` : '会话已过期，需要重新登录'}</span></div>

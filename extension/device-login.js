@@ -5,9 +5,9 @@ let workspaceDeviceLoginTimer = null;
 let workspaceDeviceLoginError = '';
 let workspaceDeviceLoginGeneration = 0;
 
-function renderDeviceLoginQRCode(userCode) {
+function renderDeviceLoginQRCode(userCode, scope) {
   const text = JSON.stringify({ protocol: 'inner-garden-device-login-v1',
-    environmentId: getWorkspaceSyncConfig().environmentId, userCode });
+    environmentId: getWorkspaceSyncConfig().environmentId, userCode, ...(scope ? { scope } : {}) });
   const qr = qrcodegen.QrCode.encodeText(text, qrcodegen.QrCode.Ecc.MEDIUM);
   const size = qr.size + 8, path = [];
   for (let y = 0; y < qr.size; y++) for (let x = 0; x < qr.size; x++) {
@@ -16,18 +16,26 @@ function renderDeviceLoginQRCode(userCode) {
   return `<svg class="sync-device-qr" viewBox="0 0 ${size} ${size}" role="img" aria-label="手机授权电脑二维码" shape-rendering="crispEdges"><rect width="${size}" height="${size}" fill="white"/><path d="${path.join(' ')}" fill="black"/></svg>`;
 }
 
+function formatDeviceSessionDuration(value) {
+  const seconds = Math.max(0, Math.floor(Number(value) || 0));
+  const hours = Math.floor(seconds / 3600), minutes = Math.floor((seconds % 3600) / 60), remaining = seconds % 60;
+  return [hours ? `${hours}小时` : '', minutes ? `${minutes}分钟` : '', remaining || (!hours && !minutes) ? `${remaining}秒` : ''].join('');
+}
+
 function renderDeviceLoginPanel() {
   const c = workspaceDeviceLogin;
-  const expired = c && (c.status === 'expired' || Date.now() >= c.expiresAt);
+  const expired = c && (c.status === 'expired' || Date.now() >= c.expiresAt || (c.sessionExpiresAt && Date.now() >= c.sessionExpiresAt));
   const authorized = c?.status === 'authorized' && !expired;
   let content;
   if (authorized) {
-    content = `<div class="sync-device-account"><strong>手机已授权，请核对账号</strong><p>${escapeHtml(c.label)}</p><p>账号 UID：<code>${escapeHtml(c.userId)}</code></p><p>与手机账号页显示的 UID 相同，才是同一个账号。昵称不能用来判断。</p><button class="sync-button" type="button" data-action="confirm-device-login">确认这个账号并同步日程</button><p class="sync-field-help">flomo 需要另行开启账号笔记库并同步。</p></div>`;
+    const seconds = c.sessionExpiresAt ? (c.sessionExpiresAt - Date.now()) / 1000 : c.sessionExpiresIn;
+    const duration = `本次访问授权剩余约 ${formatDeviceSessionDuration(seconds)}。${c.accessOnly ? '到期后需重新使用手机授权登录。' : ''}`;
+    content = `<div class="sync-device-account"><strong>手机已授权，请核对账号</strong><p>${escapeHtml(c.label)}</p><p>账号 UID：<code>${escapeHtml(c.userId)}</code></p><p>与手机账号页显示的 UID 相同，才是同一个账号。昵称不能用来判断。</p><p class="sync-field-help">${duration}</p><button class="sync-button" type="button" data-action="confirm-device-login">确认这个账号并同步日程</button><p class="sync-field-help">flomo 需要另行开启账号笔记库并同步。</p></div>`;
   } else if (c?.status === 'waiting' && !expired) {
     const seconds = Math.max(0, Math.ceil((c.expiresAt - Date.now()) / 1000));
-    content = `${renderDeviceLoginQRCode(c.userCode)}<div class="sync-device-code">授权编号：<code>${escapeHtml(c.userCode)}</code></div><p class="sync-dialog-note">请在小程序账号页点“授权电脑”，扫码或输入编号，然后确认当前账号。二维码还剩约 ${seconds} 秒。</p>`;
+    content = `${renderDeviceLoginQRCode(c.userCode, c.scope)}<div class="sync-device-code">授权编号：<code>${escapeHtml(c.userCode)}</code></div><p class="sync-dialog-note">请在小程序账号页点“授权电脑”，扫描这个二维码，然后确认当前账号。二维码还剩约 ${seconds} 秒。</p>`;
   } else {
-    content = `<p class="sync-dialog-note">${expired ? '授权已过期，请重新生成。' : c?.status === 'denied' ? '授权已取消，可重新生成。' : '打开美日心灵小程序 → 设置 → 账号 → 授权电脑。手机使用当前登录的账号授权，不需要设置密码。'}</p>`;
+    content = `<p class="sync-dialog-note">${expired ? '授权已过期，请点击“重新生成授权二维码”后重新扫码。' : c?.status === 'denied' ? '授权已取消，可重新生成。' : c?.status === 'failed' ? '本次授权无法继续，请重新生成二维码。' : '打开美日心灵小程序 → 设置 → 账号 → 授权电脑。手机使用当前登录的账号授权，不需要设置密码。'}</p>`;
   }
   return `<div class="sync-device-login" aria-live="polite">${content}
     ${workspaceDeviceLoginError ? renderAccountFeedback('手机授权尚未完成', workspaceDeviceLoginError, '请重试', 'error') : ''}
@@ -55,22 +63,42 @@ function scheduleDeviceLoginPoll(generation) {
     if (!deviceLoginPanelIsOpen()) { clearDeviceLogin(); return; }
     const c = workspaceDeviceLogin;
     if (!c?.id || c.status !== 'waiting') return;
+    if (Date.now() >= c.expiresAt) {
+      workspaceDeviceLogin = { ...c, status: 'expired' };
+      workspaceSyncClient.cancelDeviceLogin(c.id).catch(() => {});
+      renderWorkspaceSyncDialog();
+      return;
+    }
     try {
       const next = await workspaceSyncClient.pollDeviceLogin(c.id);
       if (generation !== workspaceDeviceLoginGeneration) return;
       workspaceDeviceLogin = next; workspaceDeviceLoginError = '';
     } catch (error) {
       if (generation !== workspaceDeviceLoginGeneration) return;
-      workspaceDeviceLoginError = getDeviceLoginError(error);
+      workspaceDeviceLoginError = getDeviceLoginError(error, '查询手机授权结果失败');
+      if (['DEVICE_PROFILE_LOOKUP_FAILED', 'DEVICE_SESSION_INVALID', 'DEVICE_ACCOUNT_MISMATCH'].includes(error.authErrorCode)) {
+        workspaceDeviceLogin = { ...c, status: 'failed' };
+      }
     }
     renderWorkspaceSyncDialog();
     if (workspaceDeviceLogin?.status === 'waiting') scheduleDeviceLoginPoll(generation);
   }, Math.max(5000, workspaceDeviceLogin?.intervalMs || 5000));
 }
 
-function getDeviceLoginError(error) {
-  if (['NOT_FOUND', 'METHOD_NOT_ALLOWED'].includes(error.authErrorCode)) return '账号服务尚未开放手机授权入口，请联系维护者完成配置。';
-  return /[\u3400-\u9fff]/u.test(String(error.message || '')) ? error.message : '暂时无法连接手机授权服务，请稍后重试。';
+function getDeviceLoginError(error, phase = '手机授权未完成') {
+  const code = String(error?.authErrorCode || '').toUpperCase();
+  const deviceCodes = ['DEVICE_CODE_REQUEST_FAILED', 'DEVICE_CHALLENGE_INVALID', 'DEVICE_POLL_FAILED',
+    'DEVICE_PROFILE_LOOKUP_FAILED', 'DEVICE_SESSION_INVALID', 'DEVICE_ACCOUNT_MISMATCH'];
+  if (deviceCodes.includes(code)) return String(error.message);
+  const safeCodes = ['NOT_FOUND', 'METHOD_NOT_ALLOWED', 'INVALID_REQUEST', 'ORIGIN_NOT_ALLOWED',
+    'INVALID_AUTHORIZATION', 'UNAUTHENTICATED', 'INVALID_TOKEN', 'INTERNAL_ERROR', 'UNAVAILABLE',
+    'DEADLINE_EXCEEDED', 'PERMISSION_DENIED', 'FAILED_PRECONDITION'];
+  const status = Number(error?.status || error?.httpStatus || String(error?.message || '').match(/\(([1-5]\d\d)\)\s*$/)?.[1]);
+  const details = [Number.isInteger(status) && status >= 100 && status <= 599 ? `HTTP ${status}` : '',
+    safeCodes.includes(code) ? code : ''].filter(Boolean).join(' · ');
+  if (['NOT_FOUND', 'METHOD_NOT_ALLOWED'].includes(code)) return `账号服务尚未开放手机授权入口，请联系维护者完成配置。（${code}）`;
+  if (error?.message === '请先允许访问账号服务域名。') return error.message;
+  return `${phase}，请重试。${details ? `（${details}）` : ''}`;
 }
 
 document.addEventListener('click', async event => {
@@ -102,7 +130,7 @@ document.addEventListener('click', async event => {
       await performWorkspaceSync(false);
     }
   } catch (error) {
-    workspaceDeviceLoginError = getDeviceLoginError(error);
+    workspaceDeviceLoginError = getDeviceLoginError(error, action === 'start-device-login' ? '申请手机授权码失败' : '确认授权账号失败');
     if (deviceLoginPanelIsOpen()) renderWorkspaceSyncDialog();
     else showToast(workspaceDeviceLoginError, 4500);
   } finally { button.disabled = false; }

@@ -1,6 +1,6 @@
 {
   "schema": "inner-garden-public-policy-v1",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "servicePolicy": "existing-cloudbase-all-service-eligible-accounts",
   "environmentId": "dk-checkin-d8gw6jhrt5b2ced62",
   "extensionId": "ohdenlpjdfngpaaggijhcagfpafecgdn",
@@ -11,5 +11,5 @@
   "publication": "public-source-repository",
   "repositoryUrl": "https://github.com/dengatlas/inner-garden",
   "accountOriginStatus": "authorized-and-preflight-verified",
-  "cloudAccountAcceptance": "pending"
+  "cloudAccountAcceptance": "user-confirmed-desktop-login-and-partial-sync"
 }

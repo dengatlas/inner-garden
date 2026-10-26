@@ -85,6 +85,10 @@
         }
       }
       for (const session of Object.values(this.accounts.sessions)) {
+        if (!session.refreshToken && Number.isFinite(Number(session.expiresAt)) && Number(session.expiresAt) > 0) {
+          const previousDeadline = Date.parse(session.trustedUntil || '');
+          session.trustedUntil = new Date(Math.min(Number.isFinite(previousDeadline) ? previousDeadline : Number(session.expiresAt), Number(session.expiresAt))).toISOString();
+        }
         if (Date.parse(session.trustedUntil || '') <= this.now()) expireSession(session);
       }
       const activeSession = this.accounts.sessions[this.accounts.activeAccountId] || null;
@@ -585,14 +589,19 @@
       const previousAccountId = this.auth?.accountId || '';
       const previousStateAccountId = previousAccountId || this.accounts.lastAccountId || '';
       if (previousAccountId) this.accountStates.states[previousAccountId] = contract.clone(this.state);
+      const now = this.now();
+      const absoluteExpiry = Number(data.expires_at);
+      const expiresAt = Number.isFinite(absoluteExpiry) && absoluteExpiry > 0
+        ? absoluteExpiry : now + Number(data.expires_in || 7200) * 1000;
+      if (!data.refresh_token && (!Number.isFinite(expiresAt) || expiresAt <= now)) throw new Error('登录会话已过期，请重新授权。');
       const session = {
         username,
         userId: data.sub || '',
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
-        expiresAt: this.now() + Number(data.expires_in || 7200) * 1000,
+        expiresAt,
         signedInAt: getTokenIssuedAt(data.access_token) || new Date(this.now()).toISOString(),
-        trustedUntil: new Date(this.now() + this.trustedSessionMs).toISOString(),
+        trustedUntil: new Date(Math.min(now + this.trustedSessionMs, data.refresh_token ? Infinity : expiresAt)).toISOString(),
         lastUsedAt: new Date(this.now()).toISOString(),
       };
       session.accountId = getAccountId(session);
@@ -1148,7 +1157,8 @@
   function isTrustedSession(session, now) {
     if (!session || (!session.refreshToken && !session.accessToken)) return false;
     const trustedUntil = Date.parse(session.trustedUntil || '');
-    return Number.isFinite(trustedUntil) && trustedUntil > Number(now);
+    const accessValid = Boolean(session.refreshToken) || Number(session.expiresAt) > Number(now);
+    return accessValid && Number.isFinite(trustedUntil) && trustedUntil > Number(now);
   }
 
   function expireSession(session) {
