@@ -1,10 +1,11 @@
 # Changelog
 
-## 1.3.3 — Record history candidate
+## 1.3.3 — 记录历史与恢复
 
-- Per-record cloud history for calendar blocks and daily fields, with two previous distinct versions, date change lookup, comparison and guarded restoration.
-- Explicit workspace deletions and installation-specific device identity preserve independent additions and immutable retries.
-- Candidate validation and service rollout are recorded separately in docs/RECORD_HISTORY.md. Published 1.3.2 assets are preserved.
+- 日程与日课逐条保留最近两个不同旧内容，支持当天变更、移日期与删除查找、差异比较及带当前版本校验的恢复。
+- 明确删除与独立设备身份保护跨端新增和不可变重试；恢复时保留本机草稿，并刷新相关编辑器。
+- 更新安装、扫码登录及同步说明。历史服务已单独上线；桌面安装、小程序发布和三端真实操作分别验收，见 docs/RECORD_HISTORY.md。
+- 保留已发布的 1.3.2 安装包及校验文件；GitHub 下载版需手动覆盖原目录并重新加载。
 
 ## 1.3.2 — 手机授权登录兼容修复
 

@@ -35,3 +35,5 @@ git diff --check
 同步修改 manifest、package.json、策略记录和 CHANGELOG。固定 ID 记录在 `docs/decisions/public-edition.json`。保留历史 COPY_BASELINE；开发后的历史哈希不匹配是预期结果，不覆盖它。
 
 1.3.2 发布准备分支为 `codex/release-1.3.2`，默认发布源码分支为 `main`；早期独立开发分支为 `codex/public-edition`。`origin` 为 [dengatlas/inner-garden](https://github.com/dengatlas/inner-garden)。用户已授权创建此公开仓库并推送本独立项目，不继承旧 Git 历史。用户审查最终源码、安装包和发布说明后，已明确授权本批 Git 提交／推送、合入 main 及 v1.3.2 正式 Release；附件仅为 ZIP 与校验文件。后续版本发布、扩展商店与云服务配置变更另行授权。
+
+2026-11-01 用户授权检查并发布桌面 1.3.3，发布准备分支为 `codex/release-1.3.3`，通过检查后合入 `main` 并发布 `v1.3.3` ZIP 与校验文件。保留 1.3.2 附件，小程序发布、个人终端安装及服务变更仍独立处理。

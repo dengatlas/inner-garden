@@ -1,5 +1,9 @@
 # AGENTS.md — Independent Inner Garden extension
 
+## 2026-10-26 Mini Program help integration
+
+The user authorized coordinated documentation and help changes in this repository and D:/tab-out for the 电脑端与 AI 连接 update. Keep repository changes separate and preserve the published v1.3.2 assets. README and INSTALL teach Windows Chrome ZIP installation, in-app Mini Program QR authorization with same-UID confirmation, first workspace sync, separate focus/flomo choices and manual updates. AI/MCP use is independent of extension installation and does not expose focus history. Rebuild changed package documentation only into a separate local candidate, preserving the published ZIP/checksum. This help task does not authorize another push, asset replacement, service change or Mini Program publication. See D:/tab-out/docs/AGENT_MCP_HELP_DESIGN.md.
+
 ## Scope and communication
 
 - Explain outcomes in Simplified Chinese; keep technical identifiers in English.
@@ -100,3 +104,7 @@ Prepare version 1.3.2 as a formal release on codex/release-1.3.2. Keep source, p
 The user authorized coordinated recovery and implementation in this independent extension, D:/tab-out Mini Program/shared contracts and the existing workspace backend, with separate commits and acceptance. The desktop candidate is 1.3.3; preserve published 1.3.2 assets. This implementation does not publish clients or change origins, authentication, gateway routes or WeChat legal domains.
 
 Calendar and daily-field cloud history is account-scoped, keeps two distinct prior contents without TTL, and restores by expected-version guarded new writes. Missing snapshots are not explicit deletions. New workspace device identities are installation-specific and excluded from migration; sent requests and focus source-device IDs remain immutable. Mobile editors patch latest workspace; restoration preserves drafts and refreshes affected editors across desktop pages without replaying old generated-summary callbacks. All record dates remain Asia/Shanghai. See docs/RECORD_HISTORY.md; service deployment and true device acceptance remain separately evidenced.
+
+## 2026-11-01 desktop 1.3.3 release authorization
+
+The user authorized inspecting the existing dist/1.3.3 package, activating the matching GitHub account, and publishing the checked latest version to dengatlas/inner-garden. Use codex/release-1.3.3, align source and installation documentation, commit and integrate into main, tag v1.3.3 and publish the installation ZIP plus its SHA-256 as the latest GitHub Release after checks pass. Preserve v1.3.2 assets and existing local work. This authorization does not publish the Mini Program, upgrade personal browser profiles or change remote services, origins, authentication, gateway routes or WeChat legal domains.

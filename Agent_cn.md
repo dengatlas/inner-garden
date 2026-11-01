@@ -1,5 +1,9 @@
 # Agent_cn.md — 独立 Inner Garden 扩展规则镜像
 
+## 2026-10-26 小程序帮助整合
+
+用户授权在本仓库与 D:/tab-out 协同完成“电脑端与 AI 连接”的文档及帮助，两个仓库分别保留修改。README 和 INSTALL 按 Windows Chrome 说明 ZIP 安装、小程序内扫码确认同 UID、首次同步、专注与 flomo 独立开关及手动更新。AI/MCP 无需安装扩展，当前不开放专注历史。安装说明修改后仅生成单独的本机候选包，保留已发布 v1.3.2 的 ZIP 与校验文件。本帮助任务不包含再次推送、替换发布附件、服务修改或小程序发布。见 D:/tab-out/docs/AGENT_MCP_HELP_DESIGN.md。
+
 ## 范围与沟通
 
 - 使用简体中文说明结果，技术标识保持英文。
@@ -100,3 +104,7 @@ Prepare version 1.3.2 as a formal release on codex/release-1.3.2. Keep source, p
 The user authorized coordinated recovery and implementation in this independent extension, D:/tab-out Mini Program/shared contracts and the existing workspace backend, with separate commits and acceptance. The desktop candidate is 1.3.3; preserve published 1.3.2 assets. This implementation does not publish clients or change origins, authentication, gateway routes or WeChat legal domains.
 
 Calendar and daily-field cloud history is account-scoped, keeps two distinct prior contents without TTL, and restores by expected-version guarded new writes. Missing snapshots are not explicit deletions. New workspace device identities are installation-specific and excluded from migration; sent requests and focus source-device IDs remain immutable. Mobile editors patch latest workspace; restoration preserves drafts and refreshes affected editors across desktop pages without replaying old generated-summary callbacks. All record dates remain Asia/Shanghai. See docs/RECORD_HISTORY.md; service deployment and true device acceptance remain separately evidenced.
+
+## 2026-11-01 桌面 1.3.3 发布授权
+
+用户授权检查 dist 中现有 1.3.3 安装包、激活对应 GitHub 账号，并将检查通过的最新版本发布到 dengatlas/inner-garden。在 codex/release-1.3.3 对齐源码与安装说明，检查通过后提交并合入 main、打 v1.3.3 标签，将安装 ZIP 和 SHA-256 作为最新 GitHub Release 发布。保留 v1.3.2 附件和已有本机修改。本授权不包含小程序发布、升级个人浏览器安装或修改服务、来源、认证、网关及微信合法域名。
