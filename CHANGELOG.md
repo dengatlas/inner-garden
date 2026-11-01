@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.3 — Record history candidate
+
+- Per-record cloud history for calendar blocks and daily fields, with two previous distinct versions, date change lookup, comparison and guarded restoration.
+- Explicit workspace deletions and installation-specific device identity preserve independent additions and immutable retries.
+- Candidate validation and service rollout are recorded separately in docs/RECORD_HISTORY.md. Published 1.3.2 assets are preserved.
+
 ## 1.3.2 — 手机授权登录兼容修复
 
 - 用户已确认真实桌面登录及部分数据同步成功；详细数据类别、方向和操作覆盖尚未逐项确认，见验收记录。

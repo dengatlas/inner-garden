@@ -41,32 +41,42 @@ async function recordSyncAttempt(now = Date.now()) {
 function workspaceEnvelope(value) {
   return { value, workspace: workspaceContract.clone(backgroundWorkspace), revision: workspaceRevision, ownerId: workspaceOwnerId(), state: backgroundSyncClient.getPublicState(), rawState: workspaceContract.clone(backgroundSyncClient.state) };
 }
-function broadcastWorkspace() {
-  chrome.runtime.sendMessage({ channel: 'tab-out-workspace-update', ...workspaceEnvelope() }).catch(() => {});
+function broadcastWorkspace(restoredChange) {
+  chrome.runtime.sendMessage({ channel: 'tab-out-workspace-update', ...workspaceEnvelope(), ...(restoredChange ? { restoredChange } : {}) }).catch(() => {});
 }
 function serializeWorkspaceWrite(action) {
   const result = workspaceWrites.then(action);
   workspaceWrites = result.catch(() => {});
   return result;
 }
-async function saveBackgroundWorkspace() {
+async function saveBackgroundWorkspace(restoredChange) {
   const ownerId = workspaceOwnerId();
   const accounts = await workspaceStorage.get('tabOutAccountWorkspaces') || {};
   if (ownerId) accounts[ownerId] = workspaceContract.clone(backgroundWorkspace);
   workspaceRevision += 1;
   await chrome.storage.local.set({ weeklyWorkspace: backgroundWorkspace, tabOutAccountWorkspaces: accounts, tabOutWorkspaceRevision: workspaceRevision, tabOutWorkspaceOwner: ownerId || 'local' });
-  broadcastWorkspace();
+  broadcastWorkspace(restoredChange);
 }
 async function initializeBackgroundWorkspace() {
   const stored = await chrome.storage.local.get(['weeklyWorkspace', 'tabOutWorkspaceRevision', 'tabOutWorkspaceOwner', 'tabOutAccountWorkspaces']);
   backgroundWorkspace = workspaceContract.normalizeWorkspace(stored.weeklyWorkspace);
   workspaceRevision = Number(stored.tabOutWorkspaceRevision || 0);
   backgroundSyncClient = new globalThis.TabOutSyncClient({
+    explicitDeletes: true,
     storage: workspaceStorage,
     config: globalThis.TAB_OUT_SYNC_CONFIG || { enabled: false },
     onStatus: update => chrome.runtime.sendMessage({ channel: 'tab-out-workspace-status', update }).catch(() => {}),
   });
   await backgroundSyncClient.load();
+  // Introduced once per browser installation; never rewrite immutable queued requests.
+  let deviceId = await workspaceStorage.get('innerGardenWorkspaceDeviceIdentityV1');
+  if (!deviceId) {
+    deviceId = workspaceContract.createId('workspace-device');
+    await workspaceStorage.set('innerGardenWorkspaceDeviceIdentityV1', deviceId);
+  }
+  backgroundSyncClient.state.deviceId = deviceId;
+  for (const state of Object.values(backgroundSyncClient.accountStates.states)) state.deviceId = deviceId;
+  await backgroundSyncClient.save();
   deviceAuthorization = new globalThis.InnerGardenDeviceAuth.DeviceAuthorization({
     request: (path, options) => backgroundSyncClient.authRequest(path, { ...options, signal: AbortSignal.timeout(15000) }),
     clientId: globalThis.TAB_OUT_SYNC_CONFIG.environmentId,
@@ -83,6 +93,7 @@ async function initializeBackgroundWorkspace() {
     backgroundWorkspace = workspaceContract.normalizeWorkspace(accounts[workspaceOwnerId() || 'local']);
   }
   await backgroundSyncClient.initialize(backgroundWorkspace);
+  backgroundWorkspace = workspaceContract.clone(backgroundSyncClient.latestWorkspace);
   await saveBackgroundWorkspace();
 }
 async function mergePageWorkspace(message) {
@@ -99,7 +110,10 @@ async function mergePageWorkspace(message) {
     }
     backgroundWorkspace = workspaceContract.rebaseWorkspace(message.base, message.workspace, backgroundWorkspace);
     await saveBackgroundWorkspace();
-    await backgroundSyncClient.captureWorkspace(backgroundWorkspace);
+    const before = workspaceContract.workspaceToEntityMap(message.base);
+    const after = workspaceContract.workspaceToEntityMap(message.workspace);
+    const deletedEntities = Object.keys(before).filter(key => !after[key]).map(key => ({ entityType: before[key].type, entityId: before[key].id }));
+    await backgroundSyncClient.captureWorkspace(backgroundWorkspace, { deletedEntities });
     broadcastWorkspace();
     return workspaceEnvelope();
   });
@@ -107,6 +121,20 @@ async function mergePageWorkspace(message) {
 async function controlWorkspace(message) {
   await workspaceWrites;
   const accountId = backgroundSyncClient.getPublicState().accountId || '';
+  if (message.method === 'history') return workspaceEnvelope(await backgroundSyncClient.history(message.args?.[0] || {}));
+  if (message.method === 'historyChanges') return workspaceEnvelope(await backgroundSyncClient.historyChanges(message.args?.[0] || {}));
+  if (message.method === 'restoreHistory') {
+    const input = message.args?.[0] || {};
+    const value = await backgroundSyncClient.restoreHistory(input, {
+      getWorkspace: () => workspaceContract.clone(backgroundWorkspace),
+      applyWorkspace: (next, change) => serializeWorkspaceWrite(async () => {
+        if (workspaceOwnerId() !== accountId) throw new Error('账号已切换，已停止恢复');
+        backgroundWorkspace = workspaceContract.applyEntityChange(backgroundWorkspace, change);
+        await saveBackgroundWorkspace(change);
+      }),
+    });
+    return { ...workspaceEnvelope(value), restoredChange: value.change };
+  }
   if (message.method === 'startDeviceLogin') return workspaceEnvelope(await deviceAuthorization.start(accountId));
   if (message.method === 'pollDeviceLogin') return workspaceEnvelope(await deviceAuthorization.poll(message.args?.[0], accountId));
   if (message.method === 'cancelDeviceLogin') {
@@ -197,7 +225,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     });
     workspaceControls = result.catch(() => {});
     return result;
-  })().then(result => respond({ ok: true, result }), error => respond({ ok: false, error: { message: error.message, syncErrorType: error.syncErrorType, authErrorCode: error.authErrorCode, retryable: error.retryable } }));
+  })().then(result => respond({ ok: true, result }), error => respond({ ok: false, error: { message: error.message, syncErrorType: error.syncErrorType, authErrorCode: error.authErrorCode, retryable: error.retryable, status: error.status, code: error.code } }));
   return true;
 });
 

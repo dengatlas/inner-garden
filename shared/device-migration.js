@@ -11,7 +11,7 @@
 
   function filterStorage(storage) {
     const result = Object.fromEntries(Object.entries(storage || {})
-      .filter(([key]) => !authStorageKey.test(key) && !['innerGardenWorkspaceAutoSyncAttempts', 'innerGardenFocusDeviceId'].includes(key))
+      .filter(([key]) => !authStorageKey.test(key) && !['innerGardenWorkspaceAutoSyncAttempts', 'innerGardenFocusDeviceId', 'innerGardenWorkspaceDeviceIdentityV1'].includes(key))
       .map(([key, value]) => {
         if (key === 'innerGardenFocusAccounts') return [key, { ...value, syncAccounts: {} }];
         if (key === 'innerGardenFlomoSelection') return [key, { accountId: '', owner: '' }];
@@ -67,6 +67,7 @@
   }
   function isPristineStorage(storage, defaultFlomoTags = []) {
     return Object.entries(storage || {}).every(([key, value]) => {
+      if (key === 'innerGardenWorkspaceDeviceIdentityV1') return typeof value === 'string' && value.startsWith('workspace-device-');
       if (key === 'innerGardenFocusDeviceId') return typeof value === 'string' && value.startsWith('focus-device-');
       if (key === 'innerGardenFlomoSelection') return value && value.accountId === '' && value.owner === '' && Object.keys(value).every(field => ['accountId','owner'].includes(field));
       if (key === 'innerGardenFlomoSyncAccounts') return emptyObject(value);

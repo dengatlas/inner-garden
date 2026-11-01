@@ -12,6 +12,7 @@
       this.revision = -1;
       this.publicState = {};
       this.state = {};
+      this.restoredChanges = new Set();
       chrome.runtime.onMessage.addListener(message => {
         if (message?.channel === 'tab-out-workspace-update') this.receive(message);
         if (message?.channel === 'tab-out-workspace-status') {
@@ -24,6 +25,14 @@
     getPublicState() { return this.publicState; }
     receive(result) {
       if (result.revision < this.revision) return;
+      const restored = result.restoredChange;
+      const stamp = restored && `${result.ownerId}|${restored.entityType}|${restored.entityId}|${restored.version}|${restored.revision}`;
+      const firstRestore = Boolean(stamp && this.ownerId === result.ownerId && !this.restoredChanges.has(stamp));
+      if (firstRestore) {
+        this.restoredChanges.add(stamp);
+        if (this.restoredChanges.size > 100) this.restoredChanges.delete(this.restoredChanges.values().next().value);
+        if (typeof root.dispatchEvent === 'function' && typeof root.CustomEvent === 'function') root.dispatchEvent(new root.CustomEvent('inner-garden-record-restoring', { detail: restored }));
+      }
       const current = this.getWorkspace();
       const accountChanged = this.ownerId !== null && this.ownerId !== result.ownerId;
       const firstSnapshot = this.revision < 0;
@@ -37,12 +46,14 @@
         merged = contract.rebaseWorkspace(this.baseline, current, result.workspace);
       }
       this.baseline = contract.clone(result.workspace);
+      if (firstRestore) merged = contract.applyEntityChange(merged, restored);
       this.ownerId = result.ownerId;
       this.revision = result.revision;
       this.publicState = result.state;
       this.state = result.rawState;
       // A save acknowledgement must not redraw editors or move the user's caret.
       if (firstSnapshot || accountChanged || !contract.entitiesEqual(contract.workspaceToEntityMap(current), contract.workspaceToEntityMap(merged))) this.applyWorkspace(merged);
+      if (firstRestore && typeof root.dispatchEvent === 'function' && typeof root.CustomEvent === 'function') root.dispatchEvent(new root.CustomEvent('inner-garden-record-restored', { detail: restored }));
     }
     async request(method, payload = {}) {
       let response;
@@ -68,7 +79,7 @@
     }
     async sync(reason = 'manual') { return (await this.request('sync', { reason })).value; }
   };
-  for (const method of ['login', 'loginWithVerification', 'register', 'resetPassword', 'logout', 'switchAccount', 'bindContact', 'changePassword', 'getAccountProfile', 'getCaptchaData', 'sendVerification', 'verifyCaptchaData', 'verifyVerification', 'resolveConflict', 'startDeviceLogin', 'pollDeviceLogin', 'cancelDeviceLogin', 'confirmDeviceLogin']) {
+  for (const method of ['history', 'historyChanges', 'restoreHistory', 'login', 'loginWithVerification', 'register', 'resetPassword', 'logout', 'switchAccount', 'bindContact', 'changePassword', 'getAccountProfile', 'getCaptchaData', 'sendVerification', 'verifyCaptchaData', 'verifyVerification', 'resolveConflict', 'startDeviceLogin', 'pollDeviceLogin', 'cancelDeviceLogin', 'confirmDeviceLogin']) {
     root.TabOutWorkspaceBrowserClient.prototype[method] = async function (...args) { return (await this.request(method, { args })).value; };
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

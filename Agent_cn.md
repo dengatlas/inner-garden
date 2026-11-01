@@ -93,3 +93,10 @@ Device authorization codes are opaque strings (1-256 visible non-space character
 The user confirmed successful login in their actual installed desktop client and partial data synchronization. Record this as user-reported real-terminal acceptance. Data categories, directions and create/edit/delete coverage were not specified; do not infer full workspace/focus/flomo bidirectional acceptance. This section supersedes generic pending-login statements for this user-confirmed scope.
 
 Prepare version 1.3.2 as a formal release on codex/release-1.3.2. Keep source, package and acceptance evidence aligned. Preserve necessary development paths and public connection identifiers. After reviewing the final artifacts and release notes, the user explicitly authorized committing this reviewed batch, pushing and integrating it into main, tagging v1.3.2 and creating the formal public GitHub Release with only the installation ZIP and its checksum attached. This authorization applies to this 1.3.2 release. No store submission or remote-service changes are included.
+
+
+## 2026-11-01 workspace record history candidate
+
+The user authorized coordinated recovery and implementation in this independent extension, D:/tab-out Mini Program/shared contracts and the existing workspace backend, with separate commits and acceptance. The desktop candidate is 1.3.3; preserve published 1.3.2 assets. This implementation does not publish clients or change origins, authentication, gateway routes or WeChat legal domains.
+
+Calendar and daily-field cloud history is account-scoped, keeps two distinct prior contents without TTL, and restores by expected-version guarded new writes. Missing snapshots are not explicit deletions. New workspace device identities are installation-specific and excluded from migration; sent requests and focus source-device IDs remain immutable. Mobile editors patch latest workspace; restoration preserves drafts and refreshes affected editors across desktop pages without replaying old generated-summary callbacks. All record dates remain Asia/Shanghai. See docs/RECORD_HISTORY.md; service deployment and true device acceptance remain separately evidenced.

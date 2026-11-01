@@ -56,6 +56,7 @@
       this.latestWorkspace = null;
       this.syncProgress = null;
       this.focusEnabled = false;
+      this.explicitDeletes = Boolean(options.explicitDeletes);
     }
 
     get enabled() {
@@ -202,12 +203,18 @@
       const current = contract.workspaceToEntityMap(workspace);
       const includeFocus = this.focusEnabled && Array.isArray(workspace.focusSessions);
       const previous = this.state.baseline || {};
+      const deletedKeys = new Set((options.deletedEntities || []).map(item => contract.entityKey(item.entityType, item.entityId)));
       const keys = new Set([...Object.keys(previous), ...Object.keys(current)]);
 
       for (const key of keys) {
         if (key.startsWith('focus_session::') && !includeFocus) continue;
         const before = previous[key];
         const after = current[key];
+        if (this.explicitDeletes && before && !after && !deletedKeys.has(key)) {
+          current[key] = contract.clone(before);
+          this.latestWorkspace = contract.applyEntityChange(this.latestWorkspace, { entityType: before.type, entityId: before.id, payload: before.payload });
+          continue;
+        }
         let existingIndex = -1;
         this.state.queue.forEach((operation, index) => { if (operation.entityKey === key) existingIndex = index; });
         const existing = existingIndex >= 0 ? this.state.queue[existingIndex] : null;
@@ -769,9 +776,94 @@
         );
         error.retryable = Boolean(data?.retryable || Number(response.status) >= 500);
         error.operationId = data?.operationId || '';
+        error.status = Number(response.status);
+        error.code = data?.code || data?.error?.code || '';
         throw error;
       }
       return data;
+    }
+
+
+    async historyRead(path, input) {
+      if (!this.state) await this.load();
+      const owner = this.auth?.accountId || this.accounts.lastAccountId;
+      if (!owner) throw new Error('请先登录账号，再查看云端版本');
+      const storageKey = 'innerGardenRecordHistory:' + this.stateKey;
+      const key = path + '|' + contract.stableStringify(input);
+      const cache = await this.storage.get(storageKey) || { accounts: {} };
+      const cached = cache.accounts?.[owner]?.[key];
+      try {
+        if (!navigatorOnLine()) throw new Error('当前离线');
+        const result = await this.api(path, { method: 'POST', body: JSON.stringify(input) });
+        if (this.auth?.accountId !== owner) throw Object.assign(new Error('账号已切换，请重新打开版本历史'), { code: 'ACCOUNT_CHANGED' });
+        cache.accounts ||= {};
+        const entries = Object.entries(cache.accounts[owner] || {}).filter(([entryKey]) => entryKey !== key).slice(-59);
+        cache.accounts[owner] = { ...Object.fromEntries(entries), [key]: { data: contract.clone(result), cachedAt: this.nowIso() } };
+        await this.storage.set(storageKey, cache);
+        return { ...result, cached: false };
+      } catch (error) {
+        if (cached && owner === (this.auth?.accountId || this.accounts.lastAccountId) &&
+            error.code !== 'ACCOUNT_CHANGED' && (!error.status || error.status >= 500)) {
+          return { ...contract.clone(cached.data), cached: true, cachedAt: cached.cachedAt };
+        }
+        if (error.status === 404) error.message = '云端尚未提供版本历史，请更新同步服务后重试';
+        throw error;
+      }
+    }
+
+    async history(input) { return this.historyRead('/history', input); }
+    async historyChanges(input) { return this.historyRead('/history/changes', input); }
+
+    async restoreHistory(input, options = {}) {
+      if (this.syncPromise) await this.syncPromise;
+      if (!navigatorOnLine()) throw new Error('恢复版本需要联网校验，当前内容已保留');
+      const owner = this.auth?.accountId;
+      if (!owner) throw new Error('请先登录账号');
+      const key = contract.entityKey(input.entityType, input.entityId);
+      if ((this.state.queue || []).some(operation => operation.entityKey === key)) {
+        throw Object.assign(new Error('本条记录还有待同步修改，请先同步，再重新打开版本历史'), { status: 409, code: 'LOCAL_PENDING' });
+      }
+      // Persist the request ID before sending; lost replies must retry the same restoration.
+      const pendingKey = 'innerGardenRecordHistoryRestore:' + this.stateKey;
+      const requestKey = contract.stableStringify({ owner, ...input });
+      let pending = await this.storage.get(pendingKey);
+      if (pending?.requestKey !== requestKey) {
+        pending = { requestKey, opId: contract.createId('restore'), deviceId: this.state.deviceId };
+        await this.storage.set(pendingKey, pending);
+      }
+      let result = await this.api('/history/restore', {
+        method: 'POST', body: JSON.stringify({ ...input, opId: pending.opId, deviceId: pending.deviceId }),
+      });
+      if (this.auth?.accountId !== owner) throw Object.assign(new Error('账号已切换，恢复结果未写入其他账号'), { code: 'ACCOUNT_CHANGED' });
+      let change = result.change;
+      if (!change || change.entityType !== input.entityType || change.entityId !== input.entityId) throw new Error('恢复响应与当前记录不一致');
+      if (Number(change.version || 0) < Number(this.state.versions[key] || 0)) {
+        // An idempotent receipt can describe a restore followed by later edits.
+        // Refresh the authoritative current value instead of replaying the old receipt.
+        const latest = await this.api('/history', { method: 'POST', body: JSON.stringify({ entityType: input.entityType, entityId: input.entityId }) });
+        if (!latest.current || Number(latest.current.version) < Number(this.state.versions[key])) throw new Error('恢复收据早于当前版本，请刷新后核对');
+        change = latest.current;
+        result = { ...result, change, superseded: true };
+      }
+      if (this.auth?.accountId !== owner) throw Object.assign(new Error('账号已切换，已停止恢复'), { code: 'ACCOUNT_CHANGED' });
+      // Never advance the global pull cursor past unrelated, not-yet-downloaded changes.
+      const latest = options.getWorkspace ? options.getWorkspace() : this.latestWorkspace;
+      const next = contract.applyEntityChange(latest, change);
+      if (options.applyWorkspace) await options.applyWorkspace(next, change);
+      if (this.auth?.accountId !== owner) throw Object.assign(new Error('账号已切换，已停止恢复'), { code: 'ACCOUNT_CHANGED' });
+      this.state.versions[key] = Number(change.version || 0);
+      const entity = contract.workspaceToEntityMap(next)[key];
+      if (entity) this.state.baseline[key] = contract.clone(entity);
+      else delete this.state.baseline[key];
+      this.latestWorkspace = contract.clone(next);
+      await this.save();
+      const historyCache = await this.storage.get('innerGardenRecordHistory:' + this.stateKey);
+      if (historyCache?.accounts?.[owner]) {
+        delete historyCache.accounts[owner];
+        await this.storage.set('innerGardenRecordHistory:' + this.stateKey, historyCache);
+      }
+      await this.storage.remove(pendingKey);
+      return result;
     }
 
     async sync(workspace, options = {}) {
@@ -780,7 +872,7 @@
       const input = contract.clone(workspace);
       this.syncPromise = (async () => {
         await this.captureWorkspace(input);
-        return this.performSync(input, options);
+        return this.performSync(this.explicitDeletes ? this.latestWorkspace : input, options);
       })()
         .catch(async error => {
           // Cursor/version progress stays private until the workspace has been saved.

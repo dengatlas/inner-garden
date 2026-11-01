@@ -1,5 +1,5 @@
 export const runtimeFiles = Object.freeze([
-  'manifest.json', 'index.html', 'app.js', 'style.css', 'background.js',
+  'manifest.json', 'index.html', 'app.js', 'style.css', 'record-history.js', 'record-history.css', 'background.js',
   'config.js', 'config.example.js', 'config-finalize.js', 'page-bootstrap.js',
   'workspace-background.js', 'focus-background.js', 'focus-ui.js', 'flomo-history.js', 'flomo-background.js', 'flomo-channel.js',
   'flomo-editor-tools.js', 'flomo.js', 'flomo.css', 'local-favicon.js',
@@ -16,4 +16,5 @@ export const runtimeFiles = Object.freeze([
 export const documentFiles = Object.freeze([
   ['LICENSE', 'LICENSE'], ['docs/INSTALL.md', 'INSTALL.md'],
   ['docs/PRIVACY.md', 'PRIVACY.md'], ['THIRD_PARTY_NOTICES.md', 'THIRD_PARTY_NOTICES.md'],
+  ['docs/RECORD_HISTORY.md', 'RECORD_HISTORY.md'],
 ]);

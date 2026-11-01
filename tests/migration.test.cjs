@@ -8,7 +8,7 @@ test('migration removes all environment-scoped auth sessions and resets device I
   const source = { 'tabOutSyncAuth:env': { accessToken: 'synthetic' }, 'tabOutSyncAuthAccounts:env': { sessions: { a: {} } },
     'tabOutSyncState:env': { deviceId: 'old', queue: [{ opId: 'keep' }] },
     'tabOutSyncStateAccounts:env': { states: { a: { deviceId: 'old-account', cursor: 8 } } },
-    weeklyWorkspace: { version: 3 }, innerGardenWorkspaceAutoSyncAttempts: { a: 1 } };
+    weeklyWorkspace: { version: 3 }, innerGardenWorkspaceAutoSyncAttempts: { a: 1 }, innerGardenWorkspaceDeviceIdentityV1: 'workspace-device-source' };
   const result = M.filterStorage(source);
   assert.equal(result['tabOutSyncAuth:env'], undefined);
   assert.equal(result['tabOutSyncAuthAccounts:env'], undefined);
@@ -16,6 +16,7 @@ test('migration removes all environment-scoped auth sessions and resets device I
   assert.equal(result['tabOutSyncStateAccounts:env'].states.a.deviceId, '');
   assert.equal(result['tabOutSyncState:env'].queue[0].opId, 'keep');
   assert.equal(result.innerGardenWorkspaceAutoSyncAttempts, undefined);
+  assert.equal(result.innerGardenWorkspaceDeviceIdentityV1, undefined);
 });
 
 test('import rejects auth payloads and unsupported schemas', () => {

@@ -3471,6 +3471,7 @@ function ensureWeekEntryEditor() {
           <h3 id="weekEditorTitle">Expanded note</h3>
         </div>
         <div class="week-editor-actions">
+          <button class="record-history-entry" id="weekEditorHistory" data-action="open-event-record-history" type="button">历史</button>
           <button class="week-editor-delete" id="weekEditorDelete" data-action="delete-week-event" title="Delete" aria-label="Delete event">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 7h12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-7 4v6m4-6v6m4-10-.7 12.1A2 2 0 0 1 13.3 21h-2.6a2 2 0 0 1-2-1.9L8 7" />
@@ -3508,6 +3509,7 @@ function openWeekEntryEditor(eventId) {
   const overlay = ensureWeekEntryEditor();
   const titleEl = overlay.querySelector('#weekEditorTitle');
   const deleteButton = overlay.querySelector('#weekEditorDelete');
+  const historyButton = overlay.querySelector('#weekEditorHistory');
   const titleInput = overlay.querySelector('#weekEventTitleInput');
   const textarea = overlay.querySelector('#weekEntryExpanded');
   if (!textarea || !titleInput) return;
@@ -3515,6 +3517,7 @@ function openWeekEntryEditor(eventId) {
   selectWeekEvent(event.id);
   if (titleEl) titleEl.textContent = getWeekEventLabel(event);
   if (deleteButton) deleteButton.dataset.eventId = event.id;
+  if (historyButton) { historyButton.dataset.eventId = event.id; historyButton.hidden = Boolean(event.isDraft); }
   titleInput.dataset.eventId = event.id;
   titleInput.value = event.title || '';
   textarea.dataset.eventId = event.id;
@@ -3539,6 +3542,124 @@ function closeWeekEntryEditor() {
     cleanupDraftWeekEvents();
     renderWeekCalendar();
   }
+}
+
+function recordHistoryEntity(entityType, entityId) {
+  return globalThis.TabOutWorkspaceSync.workspaceToEntityMap(getPersistedWeeklyWorkspaceState())[`${entityType}::${entityId}`];
+}
+
+const recordHistoryAppliedRestores = new Map();
+const recordHistoryVolatileDrafts = new Map();
+function recordHistoryOwner() {
+  return workspaceSyncClient?.ownerId || workspaceSyncClient?.getPublicState().accountId || 'local';
+}
+function recordHistoryRestoreKey(change) {
+  return `${recordHistoryOwner()}:${change.entityType}:${change.entityId}`;
+}
+function recordHistoryRestoreStamp(change) {
+  return `${change.version || 0}:${change.revision || 0}:${change.historyId || change.clientModifiedAt || ''}`;
+}
+function hasAppliedRecordHistoryRestore(change) {
+  return recordHistoryAppliedRestores.get(recordHistoryRestoreKey(change)) === recordHistoryRestoreStamp(change);
+}
+
+function readRecordHistoryDraft(entityType, entityId) {
+  const owner = recordHistoryOwner();
+  const key = `innerGardenRecordHistoryDraft:${owner}:${entityType}:${entityId}`;
+  if (recordHistoryVolatileDrafts.has(key)) return recordHistoryVolatileDrafts.get(key);
+  try { return JSON.parse(localStorage.getItem(key) || 'null'); }
+  catch { return null; }
+}
+
+function preserveRecordHistoryDraft(entityType, entityId, draftPayload) {
+  const entity = draftPayload ? { payload: draftPayload } : recordHistoryEntity(entityType, entityId);
+  if (!entity) return;
+  const owner = recordHistoryOwner();
+  const draft = { entityType, entityId, payload: entity.payload, clientModifiedAt: new Date().toISOString(), deviceId: '本机未同步草稿' };
+  const key = `innerGardenRecordHistoryDraft:${owner}:${entityType}:${entityId}`;
+  recordHistoryVolatileDrafts.set(key, draft);
+  // The draft is device local; browsing never pushes it as a new version.
+  try { localStorage.setItem(key, JSON.stringify(draft)); }
+  catch { throw new Error('无法保留恢复前的本机草稿，恢复已暂停。请先复制当前编辑内容。'); }
+}
+
+function refreshRestoredRecordEditors(change) {
+  const eventEditor = document.getElementById('weekEntryEditor');
+  if (change.entityType === 'calendar_event' && eventEditor?.classList.contains('visible') && eventEditor.querySelector('#weekEventTitleInput')?.dataset.eventId === change.entityId) {
+    const record = getWeekEvent(change.entityId);
+    if (!record) closeWeekEntryEditor();
+    else {
+      eventEditor.querySelector('#weekEventTitleInput').value = record.title || '';
+      eventEditor.querySelector('#weekEntryExpanded').value = record.content || '';
+      eventEditor.querySelector('#weekEditorTitle').textContent = getWeekEventLabel(record);
+      eventEditor.querySelectorAll('[data-action="set-week-event-color"]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.color === record.color)));
+    }
+  }
+  const logEditor = document.getElementById('dailyLogEditor');
+  const expanded = logEditor?.querySelector('#dailyLogExpanded');
+  if (change.entityType === 'daily_log_field' && logEditor?.classList.contains('visible') && `${expanded?.dataset.logDateKey}|${expanded?.dataset.logEditorKey}` === change.entityId) {
+    expanded.value = getDailyLogFieldValue(expanded.dataset.logEditorKey, expanded.dataset.logDateKey);
+    setDailyLogEditorSyncStatus('', '已恢复，原内容保留在历史中');
+  }
+}
+
+function applyRecordHistoryRestore(change, { redraw = true } = {}) {
+  if (hasAppliedRecordHistoryRestore(change)) return;
+  // A broadcast and its request acknowledgement may carry the same restore.
+  // Never apply that version twice over edits started after the first message.
+  weeklyWorkspaceState = globalThis.TabOutWorkspaceSync.applyEntityChange(weeklyWorkspaceState, change);
+  recordHistoryAppliedRestores.set(recordHistoryRestoreKey(change), recordHistoryRestoreStamp(change));
+  if (redraw) { renderWeekCalendar(); renderWeekPlan(); renderDailyLogPanel(); renderDailyLogArchive(); renderYearArchive(); }
+  refreshRestoredRecordEditors(change);
+}
+
+window.addEventListener('inner-garden-record-restoring', event => {
+  const change = event.detail;
+  if (!['calendar_event', 'daily_log_field'].includes(change?.entityType) || !change.entityId || hasAppliedRecordHistoryRestore(change)) return;
+  try { prepareRecordHistoryRestore({ ...change, dateKey: change.payload?.dateKey }); }
+  catch (error) { showToast(`${error.message} 当前草稿仍保留在此页面，请先复制。`, 6000); }
+});
+window.addEventListener('inner-garden-record-restored', event => {
+  const change = event.detail;
+  if (['calendar_event', 'daily_log_field'].includes(change?.entityType) && change.entityId) applyRecordHistoryRestore(change, { redraw: false });
+});
+
+function prepareRecordHistoryRestore(target) {
+  let storageError;
+  try { preserveRecordHistoryDraft(target.entityType, target.entityId); }
+  catch (error) { storageError = error; }
+  const entityDate = target.entityType === 'calendar_event'
+    ? recordHistoryEntity(target.entityType, target.entityId)?.payload.dateKey
+    : String(target.entityId).split('|')[0];
+  // A pending generated summary can also rewrite its linked time blocks. Keep
+  // that text locally and stop the old callback before replacing either source.
+  if (pendingDailyLogGeneratedSync && [entityDate, target.dateKey].includes(pendingDailyLogGeneratedSync.dateKey)) {
+    const pending = pendingDailyLogGeneratedSync;
+    try { preserveRecordHistoryDraft('daily_log_field', `${pending.dateKey}|generated`, { dateKey: pending.dateKey, field: 'generated', value: pending.text }); }
+    catch (error) { storageError ||= error; }
+    if (dailyLogGeneratedSyncTimer) clearTimeout(dailyLogGeneratedSyncTimer);
+    dailyLogGeneratedSyncTimer = null;
+    pendingDailyLogGeneratedSync = null;
+  }
+  if (storageError) throw storageError;
+}
+
+async function openRecordHistory(entityType, entityId) {
+  if (!workspaceSyncClient || !globalThis.InnerGardenRecordHistory) return;
+  const entity = entityType && entityId ? recordHistoryEntity(entityType, entityId) : null;
+  const localEntity = entity ? { entityType, entityId, payload: entity.payload } : null;
+  const dateKey = getSelectedDailyLogDateKey();
+  document.querySelectorAll('.record-history-day-menu').forEach(menu => { menu.open = false; });
+  await globalThis.InnerGardenRecordHistory.open({
+    client: workspaceSyncClient, entityType, entityId, dateKey, localEntity,
+    localDraft: entityType ? readRecordHistoryDraft(entityType, entityId) : null,
+    onBeforeRestore: prepareRecordHistoryRestore,
+    onRestored: async (result, target) => {
+      if (!result.change) throw new Error('服务端未返回恢复后的记录，请刷新核对');
+      applyRecordHistoryRestore(result.change);
+      showToast(result.superseded ? '恢复请求已处理，此后又有更新，已保留最新版本' : '已恢复为新版本，原内容保留在历史中');
+    },
+  });
 }
 
 function getDailyLogFieldKeyFromTarget(target) {
@@ -3930,6 +4051,7 @@ function ensureDailyLogEditor() {
           <h3 id="dailyLogEditorTitle">Expanded note</h3>
         </div>
         <div class="week-editor-actions">
+          <button class="record-history-entry" id="dailyLogEditorHistory" data-action="open-daily-record-history" type="button">历史</button>
           <button class="log-copy-btn" id="dailyLogEditorCopy" data-action="copy-daily-log-field" title="Copy log" aria-label="Copy log">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" />
@@ -3961,6 +4083,7 @@ function openDailyLogEditor(fieldKey, dateKey = getSelectedDailyLogDateKey()) {
   const panelEl = overlay.querySelector('.daily-log-editor-panel');
   const textarea = overlay.querySelector('#dailyLogExpanded');
   const copyButton = overlay.querySelector('#dailyLogEditorCopy');
+  const historyButton = overlay.querySelector('#dailyLogEditorHistory');
   if (!textarea) return;
 
   if (kickerEl) kickerEl.textContent = getDailyLogDateMode(dateKey) === 'plan' ? 'Daily plan' : 'Daily log';
@@ -3968,6 +4091,11 @@ function openDailyLogEditor(fieldKey, dateKey = getSelectedDailyLogDateKey()) {
   textarea.dataset.logEditorKey = fieldKey;
   textarea.dataset.logDateKey = dateKey;
   textarea.value = getDailyLogFieldValue(fieldKey, dateKey);
+  if (historyButton) {
+    historyButton.dataset.field = fieldKey;
+    historyButton.dataset.dateKey = dateKey;
+    historyButton.hidden = fieldKey === 'generatedSourceSignature';
+  }
   textarea.readOnly = false;
   panelEl?.classList.toggle('is-generated', fieldKey === 'generated');
   if (fieldKey === 'generated') {
@@ -5777,6 +5905,19 @@ document.addEventListener('click', async (e) => {
   if (!actionEl) return;
 
   const action = actionEl.dataset.action;
+
+  if (action === 'open-event-record-history') {
+    await openRecordHistory('calendar_event', actionEl.dataset.eventId);
+    return;
+  }
+  if (action === 'open-daily-record-history') {
+    await openRecordHistory('daily_log_field', `${actionEl.dataset.dateKey}|${actionEl.dataset.field}`);
+    return;
+  }
+  if (action === 'open-day-record-history') {
+    await openRecordHistory();
+    return;
+  }
 
   if (action === 'open-sync-panel') {
     openWorkspaceSyncDialog();

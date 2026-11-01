@@ -1,0 +1,50 @@
+.record-history-dialog { width:min(1120px,94vw); height:min(820px,90dvh); max-height:90dvh; margin:auto; padding:0; overflow:hidden; border:1px solid var(--warm-gray,#d6cfc0); border-radius:18px; color:var(--ink,#242a28); background:var(--paper,#f5f1e8); box-shadow:0 24px 90px #0004; }
+.record-history-dialog[open] { display:grid; grid-template-rows:auto auto minmax(0,1fr) auto; }
+.record-history-dialog>.record-history-layout,.record-history-dialog>.record-history-day-list,.record-history-dialog>.record-history-empty { min-height:0; overflow:auto; }
+.record-history-dialog>header,.record-history-dialog>footer { animation:none; opacity:1; transform:none; }
+.record-history-header>button { flex-shrink:0; white-space:nowrap; }
+.record-history-dialog::backdrop { background:#18231f70; backdrop-filter:blur(3px); }
+.record-history-dialog button { font:inherit; cursor:pointer; color:inherit; border:1px solid var(--warm-gray,#d6cfc0); background:transparent; border-radius:8px; padding:8px 13px; min-height:38px; }
+.record-history-dialog button:disabled { cursor:default; opacity:.45; }
+.record-history-dialog button:focus-visible { outline:2px solid var(--accent-amber,#a44b32); outline-offset:3px; }
+.record-history-header { margin:0; border:0; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:22px 26px 14px; }
+.record-history-header p { color:var(--muted,#77756d); font-size:12px; margin:0 0 5px; }
+.record-history-header h2 { font-size:22px; margin:0; line-height:1.4; overflow-wrap:anywhere; }
+.record-history-status { display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:13px; color:var(--muted,#77756d); padding:8px 26px 14px; border-bottom:1px solid var(--warm-gray,#d6cfc0); }
+.record-history-status button { flex-shrink:0; }
+.record-history-layout { display:grid; grid-template-columns:230px minmax(0,1fr); min-height:320px; }
+.record-history-versions { padding:18px 14px; border-right:1px solid var(--warm-gray,#d6cfc0); }
+.record-history-versions button { width:100%; text-align:left; margin-bottom:10px; padding:12px; }
+.record-history-versions button[aria-pressed=true] { border-color:var(--accent-amber,#a44b32); box-shadow:inset 3px 0 var(--accent-amber,#a44b32); background:#a44b3208; }
+.record-history-versions strong,.record-history-versions span,.record-history-versions small { display:block; }
+.record-history-versions span { margin:6px 0; font-size:13px; }
+.record-history-versions small { color:var(--muted,#77756d); font-size:11px; overflow-wrap:anywhere; }
+.record-history-comparison { min-width:0; padding:18px 24px 28px; }
+.record-history-comparison-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+.record-history-local-note { font-size:12px; color:var(--muted,#77756d); border-left:2px solid var(--accent-amber,#a44b32); padding-left:10px; line-height:1.7; }
+.record-history-metadata { margin:0 0 18px; }
+.record-history-metadata>div { padding:10px 0; border-bottom:1px solid var(--warm-gray,#d6cfc0); }
+.record-history-metadata dt { font-size:12px; font-weight:700; margin-bottom:6px; }
+.record-history-metadata dd { display:flex; gap:12px; font-size:14px; margin:4px 0; overflow-wrap:anywhere; }
+.record-history-metadata dd>span { flex:0 0 30px; font-size:12px; color:var(--muted,#77756d); }
+.record-history-text { margin:0 0 22px; }
+.record-history-text h3 { font-size:14px; margin:0 0 10px; }
+.record-history-text p { display:flex; align-items:baseline; gap:10px; margin:0; padding:5px 8px; font-size:14px; line-height:1.8; white-space:pre-wrap; overflow-wrap:anywhere; }
+.record-history-text p>span:last-child { min-width:0; }
+.record-history-text .is-current { background:#4b765313; border-left:2px solid #4b7653; }
+.record-history-text .is-previous { background:#a44b3210; border-left:2px solid #a44b32; }
+.record-history-line-label { flex:0 0 48px; font-size:11px; opacity:.75; white-space:nowrap; }
+.record-history-no-change,.record-history-empty { color:var(--muted,#77756d); font-size:13px; line-height:1.8; }
+.record-history-empty { padding:24px; }
+.record-history-actions { display:flex; gap:10px; align-items:center; justify-content:flex-end; position:relative; margin:0; padding:14px 24px max(14px,env(safe-area-inset-bottom)); background:var(--paper,#f5f1e8); border-top:1px solid var(--warm-gray,#d6cfc0); }
+.record-history-actions>span { margin-right:auto; font-size:12px; color:var(--muted,#77756d); }
+.record-history-actions .record-history-restore { background:var(--accent-amber,#a44b32); color:#fffdf8; border-color:transparent; }
+.record-history-day-list { padding:18px 24px; min-height:200px; }
+.record-history-day-item { display:block; width:100%; text-align:left; margin:0 0 10px; }
+.record-history-day-item>strong,.record-history-day-item>span,.record-history-day-item>small { display:block; margin:3px 0; }
+.record-history-day-item>span,.record-history-day-item>small { font-size:12px; color:var(--muted,#77756d); }
+.record-history-entry { font:inherit; cursor:pointer; color:var(--accent-amber,#a44b32); border:0; background:transparent; padding:8px 10px; white-space:nowrap; }
+.record-history-day-menu { position:relative; }
+.record-history-day-menu summary { list-style:none; cursor:pointer; padding:8px 10px; font-size:13px; }
+.record-history-day-menu[open]>button { position:absolute; z-index:15; top:100%; right:0; min-width:126px; background:var(--paper,#f5f1e8); border:1px solid var(--warm-gray,#d6cfc0); border-radius:8px; box-shadow:0 6px 22px #0002; }
+@media(max-width:680px) { .record-history-dialog { width:100vw; max-width:none; height:100dvh; max-height:100dvh; border:0; border-radius:0; } .record-history-header,.record-history-status { padding-left:16px; padding-right:16px; } .record-history-layout { display:block; } .record-history-versions { display:flex; overflow-x:auto; gap:8px; padding:14px 16px; border-right:0; border-bottom:1px solid var(--warm-gray,#d6cfc0); } .record-history-versions button { flex:0 0 170px; margin:0; } .record-history-comparison { padding:18px 16px; } .record-history-actions { padding-left:16px; padding-right:16px; } .record-history-actions>span { display:none; } .record-history-line-label { flex-basis:44px; } }

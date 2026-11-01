@@ -9,6 +9,7 @@
   <link href="fonts/fonts.css" rel="stylesheet">
 
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="record-history.css">
 <link rel="stylesheet" href="flomo.css">
 </head>
 <body>
@@ -170,6 +171,7 @@
       </div>
       <div class="workspace-week-controls">
         <div class="section-count" id="weekRangeLabel"></div>
+        <details class="record-history-day-menu"><summary aria-label="当前所选日期的更多操作">更多</summary><button type="button" class="record-history-entry" data-action="open-day-record-history">当天变更</button></details>
         <div class="week-nav" aria-label="周切换">
           <button type="button" data-action="show-prev-week" aria-label="上一周">上周</button>
           <button type="button" data-action="show-current-week">本周</button>
@@ -191,6 +193,7 @@
             <h2>Daily log</h2>
             <div class="section-line"></div>
             <div class="section-count" id="dailyLogDateLabel"></div>
+            <details class="record-history-day-menu"><summary aria-label="日课日期的更多操作">更多</summary><button type="button" class="record-history-entry" data-action="open-day-record-history">当天变更</button></details>
           </div>
 
           <div class="week-plan">
