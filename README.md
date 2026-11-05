@@ -2,11 +2,11 @@
 
 本地优先的桌面 Chrome 新标签页工作区：整理标签、管理稍后再看、专注计时、安排日历与周计划、记录日课和 flomo 笔记。
 
-当前版本 **1.3.3**，公开源码仓库为 [dengatlas/inner-garden](https://github.com/dengatlas/inner-garden)。本版新增日程与日课版本历史、当天变更、差异比较和带版本校验的恢复；保留手机授权登录、账号专注记录、flomo 同步和本机备份。本机编辑无需登录。历史服务已单独上线，个人终端升级与三端完整互通的验收范围见[验收记录](docs/ACCEPTANCE.md)。
+当前源码版本 **1.3.4**，修复桌面 flomo 上传中断后重试可能触发的 `Operation ID reused`。已卡住的旧版队列可在更新后重试。应用支持日程和日课的版本历史、手机授权登录、专注记录和本机备份，本机编辑无需登录。验收范围见[验收记录](docs/ACCEPTANCE.md)。
 
 ## 安装
 
-从 [v1.3.3 发布页](https://github.com/dengatlas/inner-garden/releases/tag/v1.3.3)下载 `inner-garden-1.3.3.zip` 和 `.sha256` 校验文件。普通用户请选择安装 ZIP，GitHub 自动生成的 Source code 是源码包。
+本版本的安装包为 `inner-garden-1.3.4.zip`，配套 `.sha256` 文件可核对下载完整性。公开版本和附件见 [GitHub Releases](https://github.com/dengatlas/inner-garden/releases)。GitHub 自动生成的 Source code 是源码包。
 
 解压安装 ZIP，打开 `chrome://extensions`，启用“开发者模式”，点击“加载已解压的扩展程序”，选择包含 `manifest.json` 的目录。源码目录安装请选择 `extension/`。无需 npm、Node 或后端部署。
 
@@ -15,6 +15,7 @@
 公开版使用独立固定 ID，可保留旧版。Chrome 新标签页同时只有一个扩展生效；本机数据分开，同一云账号继续使用同一服务。先备份旧版，再按迁移说明导入；不要通过卸载旧版来更新或迁移。
 
 - [安装、更新与迁移](docs/INSTALL.md)
+- [1.3.4 发布说明](docs/RELEASE_1.3.4.md)
 - [数据与隐私](docs/PRIVACY.md)
 - [专注记录与统计同步](docs/FOCUS_SYNC.md)
 - [开发与打包](docs/DEVELOPMENT.md)

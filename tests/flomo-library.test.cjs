@@ -2,6 +2,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm');
 const {workerHarness}=require('./worker-harness.cjs');
 const F=require('../shared/flomo');
+const {splitText}=require('../shared/flomo-transport');
 async function ready(initial={}) {
  const h=workerHarness(initial,{enabled:false});await h.request({method:'initialize'});
  h.context.fixtureOwner='uid:a';
@@ -35,6 +36,61 @@ test('first enable survives a transient refresh failure without reverting to a l
  const h=await ready();vm.runInContext("backgroundSyncClient.ensureAccessToken=async()=>{throw Error('refresh 503')};",h.context);
  await h.flomo('account',{copy:true});await assert.rejects(h.flomo('sync'),/refresh 503/);
  const status=await h.flomo('status');assert.equal(status.syncEnabled,true);assert.equal(status.selectedOwner,'uid:a');assert.equal((await h.flomo('read')).sync.lastError,'refresh 503');
+});
+test('flomo retries preserve wire bytes after a worker restart and resume previously staged legacy uploads',async()=>{
+ const key='innerGardenFlomo:uid:a',stamp='2026-11-01T00:00:00Z';
+ const blank={version:1,notes:[],tags:[]};
+ const note={id:'retry',body:'字🍃'.repeat(6000),tagIds:[],createdAt:stamp,updatedAt:stamp};
+ const local={...blank,notes:[note]};
+ const upload=F.portable(local),parts=splitText(JSON.stringify(upload));
+ assert.ok(parts.length>1);
+ const storageRoundTrip=value=>JSON.parse(JSON.stringify(value,(_key,item)=>item&&typeof item==='object'&&!Array.isArray(item)
+  ? Object.fromEntries(Object.keys(item).sort().map(key=>[key,item[key]])) : item));
+
+ for(const legacy of [false,true]){
+  const staged=new Map();
+  let remote={revision:0,state:blank},attempts=0,legacyRejections=0,commitId;
+  const opId='sync-legacy-test';
+  const pending={opId,baseRevision:0,state:upload};
+  if(legacy)staged.set(opId+':0',parts[0]);
+  const fetch=async(url,request)=>{
+   const body=JSON.parse(request.body);
+   const reply=(json,status=200)=>({ok:status===200,status,json:async()=>json});
+   if(url.endsWith('/pull'))return reply(remote);
+   if(url.endsWith('/push-part')){
+    if(!legacy&&body.index===1&&attempts++===0)throw Error('network interrupted');
+    const key=body.opId+':'+body.index;
+    if(staged.has(key)&&staged.get(key)!==body.content){
+     legacyRejections++;
+     return reply({message:'同步未完成：Operation ID reused'},400);
+    }
+    staged.set(key,body.content);
+    return reply({accepted:true,index:body.index});
+   }
+   assert.ok(url.endsWith('/push'));
+   assert.equal(body.baseRevision,remote.revision);
+   commitId=body.opId;
+   const chunks=Array.from({length:body.uploadParts},(_,index)=>staged.get(commitId+':'+index));
+   assert.ok(chunks.every(chunk=>typeof chunk==='string'));
+   remote={revision:1,state:F.validate(JSON.parse(chunks.join('')))};
+   return reply({...remote,opId:commitId,status:'accepted'});
+  };
+  let h=await ready({[key]:local});
+  if(legacy)h.data[key].sync={base:blank,revision:0,pending,lastError:'同步未完成：Operation ID reused'};
+  else {
+   h.context.fetch=fetch;
+   await assert.rejects(h.flomo('sync'),/network interrupted/);
+  }
+  const original=h.data[key].sync.pending;
+  h=await ready(storageRoundTrip(h.data));
+  h.context.fetch=fetch;
+  await h.flomo('sync');
+  assert.equal(commitId,original.opId);
+  assert.equal(legacyRejections,legacy?1:0);
+  assert.deepEqual(remote.state,upload);
+  assert.equal(h.data[key].sync.pending,null);
+  assert.equal(h.data[key].sync.lastError,'');
+ }
 });
 test('independent focus and flomo flags survive every unified manual-sync combination',async()=>{
  for(const focusEnabled of [false,true])for(const flomoEnabled of [false,true]){

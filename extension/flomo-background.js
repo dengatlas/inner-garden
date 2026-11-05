@@ -25,6 +25,42 @@ async function flomoRead(owner){const key=flomoKey(owner),stored=(await chrome.s
 async function flomoSave(owner,state,notify=true){await chrome.storage.local.set({[flomoKey(owner)]:state});if(notify)chrome.runtime.sendMessage({channel:'inner-garden-flomo-changed',owner}).catch(()=>{});return state;}
 async function flomoAccount(){await (workspaceReady ||= initializeBackgroundWorkspace());if(workspaceAccountTransition)await workspaceAccountTransition;const state=backgroundSyncClient.getPublicState();if(!state.loggedIn || !state.accountId)throw new Error('请先登录账号');return state.accountId;}
 async function flomoAuth(){const accountId=await flomoAccount();return {accountId,accessToken:await backgroundSyncClient.ensureAccessToken()};}
+
+function stableFlomoUpload(value) {
+ if(Array.isArray(value))return value.map(stableFlomoUpload);
+ if(!value||typeof value!=='object')return value;
+ return Object.fromEntries(Object.keys(value).sort().map(key=>[key,stableFlomoUpload(value[key])]));
+}
+
+function legacyFlomoUpload(state) {
+ // v1.3.3 sent the in-memory merge before Chrome reordered the stored keys.
+ // Reconstruct those wire shapes without changing values or array order.
+ const ordered=(record,keys)=>Object.fromEntries([
+  ...keys.filter(key=>Object.hasOwn(record,key)).map(key=>[key,record[key]]),
+  ...Object.entries(record).filter(([key])=>!keys.includes(key)),
+ ]);
+ return {
+  version:state.version,
+  notes:state.notes.map(note=>ordered(note,Object.hasOwn(note,'images')
+   ? ['id','body','tagIds','inlineTagIds','images','createdAt','updatedAt','pinned','deletedAt','purgedAt','attachmentCount']
+   : ['purgedAt','id','body','tagIds','inlineTagIds','createdAt','updatedAt','pinned','deletedAt','attachmentCount'])),
+  tags:state.tags.map(tag=>ordered(tag,['id','name','parentId','pinned','createdAt','updatedAt'])),
+ };
+}
+
+async function exchangeFlomo(send,action,data) {
+ const {exchange}=globalThis.InnerGardenFlomoTransport;
+ if(action!=='push')return exchange(send,action,data);
+ const state=stableFlomoUpload(data.state);
+ try {
+  return await exchange(send,action,{...data,state});
+ } catch(error) {
+  if(error.code!=='FLOMO_UPLOAD_PART_REUSED')throw error;
+  // Old chunks may already be staged (or committed). Replay under the same ID.
+  return exchange(send,action,{...data,state:legacyFlomoUpload(state)});
+ }
+}
+
 async function flomoSync(owner){
  if(flomoNetwork)throw new Error('已有 flomo 同步进行中，请稍后重试');
  flomoNetwork=(async()=>{
@@ -33,7 +69,20 @@ async function flomoSync(owner){
  const auth=await flomoAuth();if(auth.accountId!==owner)throw new Error('请打开当前登录账号的笔记库');
  const base=String((globalThis.TAB_OUT_SYNC_CONFIG||{}).flomoApiBaseUrl||'').replace(/\/+$/,'');if(!base)throw new Error('flomo 云端接口尚未配置，笔记已保存在本机');
  const guard=()=>{if(backgroundSyncClient.getPublicState().accountId!==owner)throw new Error('账号已切换，同步已暂停');};
- await flomoEngine.sync({read:()=>flomoRead(owner),mutate:fn=>flomoWrite(async()=>{guard();return flomoSave(owner,fn(await flomoRead(owner)));}),request:(action,data)=>globalThis.InnerGardenFlomoTransport.exchange(async(part,value)=>{guard();const response=await fetch(base+'/'+part,{method:'POST',signal:AbortSignal.timeout(30000),headers:{Authorization:'Bearer '+auth.accessToken,'Content-Type':'application/json'},body:JSON.stringify(value)});const result=await response.json();guard();if(!response.ok)throw new Error(result.message || 'flomo 同步失败');return result;},action,data)}); } catch(error) {
+ const send=async(part,value)=>{
+  guard();
+  const response=await fetch(base+'/'+part,{method:'POST',signal:AbortSignal.timeout(30000),headers:{Authorization:'Bearer '+auth.accessToken,'Content-Type':'application/json'},body:JSON.stringify(value)});
+  const result=await response.json();
+  guard();
+  if(!response.ok){
+   const error=new Error(result.message || 'flomo 同步失败');
+   if(part==='push-part'&&response.status===400&&result.message==='同步未完成：Operation ID reused')error.code='FLOMO_UPLOAD_PART_REUSED';
+   throw error;
+  }
+  return result;
+ };
+ await flomoEngine.sync({read:()=>flomoRead(owner),mutate:fn=>flomoWrite(async()=>{guard();return flomoSave(owner,fn(await flomoRead(owner)));}),request:(action,data)=>exchangeFlomo(send,action,data)});
+ } catch(error) {
   await flomoWrite(async()=>{const account=backgroundSyncClient.getPublicState();if((account.accountId||account.authRequired&&account.cachedAccountId)!==owner)return;const state=await flomoRead(owner);state.sync={...state.sync,lastError:error.message};await flomoSave(owner,state);}).catch(()=>{});throw error;
  }
  })().finally(()=>{flomoNetwork=null;});return flomoNetwork;
